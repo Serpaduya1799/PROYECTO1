@@ -437,10 +437,28 @@
     </div>
 
     <script>
-        // Configuración
+        // Configuración con validación
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2VycGFkdXlhMTciLCJhIjoiY21kZTM1d3RhMGJjajJscHM0emIzYjVheCJ9.n9I1c8_WHPDSz7_pzU5rwA';
         const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
+        
+        // Validar configuración
+        function validateConfig() {
+            console.log('Validando configuración...');
+            console.log('Mapbox token:', MAPBOX_TOKEN ? 'Presente ✓' : 'Ausente ✗');
+            console.log('Supabase URL:', SUPABASE_URL ? 'Presente ✓' : 'Ausente ✗');
+            console.log('Supabase Key:', SUPABASE_KEY ? 'Presente ✓' : 'Ausente ✗');
+            
+            if (!MAPBOX_TOKEN) {
+                throw new Error('Token de Mapbox no configurado');
+            }
+            
+            if (!MAPBOX_TOKEN.startsWith('pk.')) {
+                throw new Error('Token de Mapbox inválido (debe empezar con pk.)');
+            }
+            
+            return true;
+        }
         
         // Estado global
         let map;
@@ -449,71 +467,164 @@
         let loadedLayers = {};
         
         // Configurar Mapbox
-        mapboxgl.accessToken = MAPBOX_TOKEN;
+        console.log('Configurando Mapbox...');
+        try {
+            validateConfig();
+            mapboxgl.accessToken = MAPBOX_TOKEN;
+            console.log('Mapbox configurado correctamente');
+        } catch (error) {
+            console.error('Error en configuración:', error);
+        }
         
         // Inicializar aplicación
         document.addEventListener('DOMContentLoaded', function() {
-            initMap();
+            console.log('DOM loaded, checking dependencies...');
+            
+            // Verificar que Mapbox GL JS esté cargado
+            if (typeof mapboxgl === 'undefined') {
+                console.error('Mapbox GL JS no está cargado');
+                showMessage('Error: Mapbox GL JS no se pudo cargar', 'error');
+                return;
+            }
+            
+            console.log('Mapbox GL JS version:', mapboxgl.version);
+            console.log('DOM loaded, initializing map...');
+            
+            // Pequeño delay para asegurar que todo esté listo
+            setTimeout(() => {
+                initMap();
+            }, 100);
         });
         
         function initMap() {
             try {
+                console.log('Inicializando mapa con token:', MAPBOX_TOKEN.substring(0, 20) + '...');
+                
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) {
+                    throw new Error('Contenedor del mapa no encontrado');
+                }
+                
+                console.log('Contenedor del mapa encontrado');
+                
                 map = new mapboxgl.Map({
                     container: 'map',
-                    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                    style: 'mapbox://styles/mapbox/streets-v12', // Cambiar a estilo más simple
                     center: [-79.0059, -2.9001], // Cuenca, Ecuador
                     zoom: 10,
                     maxZoom: 18,
-                    minZoom: 8
+                    minZoom: 8,
+                    attributionControl: true,
+                    logoPosition: 'bottom-left'
                 });
                 
-                // Controles del mapa
-                map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-                map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
-                map.addControl(new mapboxgl.ScaleControl(), 'bottom-right');
+                console.log('Objeto mapa creado, agregando event listeners...');
+                
+                // Evento de carga
+                map.on('load', () => {
+                    console.log('🎉 Mapa cargado correctamente');
+                    showMessage('Mapa cargado correctamente', 'success');
+                    
+                    // Cambiar a vista satelital después de cargar
+                    setTimeout(() => {
+                        map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+                    }, 1000);
+                    
+                    loadPuntosData();
+                });
+                
+                // Evento de error
+                map.on('error', (e) => {
+                    console.error('❌ Error en el mapa:', e);
+                    if (e.error && e.error.message) {
+                        if (e.error.message.includes('401') || e.error.message.includes('Unauthorized')) {
+                            showMessage('Error: Token de Mapbox inválido', 'error');
+                        } else if (e.error.message.includes('rate limit')) {
+                            showMessage('Error: Límite de uso de Mapbox excedido', 'error');
+                        } else {
+                            showMessage('Error del mapa: ' + e.error.message, 'error');
+                        }
+                    } else {
+                        showMessage('Error desconocido del mapa', 'error');
+                    }
+                });
+                
+                // Otros eventos importantes
+                map.on('style.load', () => {
+                    console.log('✅ Estilo del mapa cargado');
+                });
+                
+                map.on('data', (e) => {
+                    if (e.type === 'style') {
+                        console.log('📊 Datos del estilo cargados');
+                    }
+                });
+                
+                console.log('Event listeners agregados, configurando controles...');
+                
+                // Agregar controles después de un breve delay
+                setTimeout(() => {
+                    try {
+                        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+                        map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+                        map.addControl(new mapboxgl.ScaleControl(), 'bottom-right');
+                        console.log('✅ Controles agregados');
+                    } catch (controlError) {
+                        console.error('Error agregando controles:', controlError);
+                    }
+                }, 500);
                 
                 // Mostrar coordenadas en tiempo real
                 map.on('mousemove', (e) => {
-                    document.getElementById('coordinates').textContent = 
-                        `Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}`;
+                    const coordsElement = document.getElementById('coordinates');
+                    if (coordsElement) {
+                        coordsElement.textContent = 
+                            `Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}`;
+                    }
                 });
                 
                 // Click en el mapa para técnicos
                 map.on('click', (e) => {
+                    console.log('🖱️ Click en mapa:', e.lngLat);
                     if (currentUser && currentUser.type === 'tecnico') {
                         selectedCoordinates = [e.lngLat.lng, e.lngLat.lat];
                         
-                        // Mostrar coordenadas seleccionadas
-                        document.getElementById('selectedCoords').innerHTML = 
-                            `<strong>Punto seleccionado:</strong><br>Lat: ${e.lngLat.lat.toFixed(6)}<br>Lng: ${e.lngLat.lng.toFixed(6)}`;
+                        const coordsElement = document.getElementById('selectedCoords');
+                        if (coordsElement) {
+                            coordsElement.innerHTML = 
+                                `<strong>Punto seleccionado:</strong><br>Lat: ${e.lngLat.lat.toFixed(6)}<br>Lng: ${e.lngLat.lng.toFixed(6)}`;
+                        }
                         
-                        // Agregar marcador temporal
                         removeTemporaryMarker();
                         addTemporaryMarker(selectedCoordinates);
+                    } else if (currentUser && currentUser.type === 'usuario') {
+                        queryLayerFeatures(e.point);
                     }
                 });
                 
-                // Cuando el mapa esté cargado
-                map.on('load', () => {
-                    console.log('Mapa cargado correctamente');
-                    loadPuntosData();
-                    
-                    // Agregar evento de click para obtener información de capas
-                    map.on('click', (e) => {
-                        if (currentUser && currentUser.type === 'usuario') {
-                            queryLayerFeatures(e.point);
-                        }
-                    });
-                });
-                
-                map.on('error', (e) => {
-                    console.error('Error en el mapa:', e);
-                    showMessage('Error al cargar el mapa. Verifica tu conexión a internet.', 'error');
-                });
+                console.log('✅ Mapa inicializado correctamente');
                 
             } catch (error) {
-                console.error('Error inicializando el mapa:', error);
-                showMessage('Error al inicializar el mapa', 'error');
+                console.error('💥 Error crítico inicializando el mapa:', error);
+                showMessage('Error crítico al inicializar el mapa: ' + error.message, 'error');
+                
+                // Mostrar información de debug en el contenedor del mapa
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    mapContainer.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; flex-direction: column;">
+                            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 400px;">
+                                <h3 style="color: #e53e3e; margin-bottom: 15px;">❌ Error de Mapa</h3>
+                                <p style="color: #4a5568; margin-bottom: 10px;"><strong>Error:</strong> ${error.message}</p>
+                                <p style="color: #4a5568; margin-bottom: 10px;"><strong>Token Mapbox:</strong> ${MAPBOX_TOKEN ? '✅ Presente' : '❌ Ausente'}</p>
+                                <p style="color: #4a5568; margin-bottom: 15px;"><strong>Mapbox GL JS:</strong> ${typeof mapboxgl !== 'undefined' ? '✅ Cargado' : '❌ No cargado'}</p>
+                                <button onclick="location.reload()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                                    🔄 Recargar Página
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
             }
         }
         
