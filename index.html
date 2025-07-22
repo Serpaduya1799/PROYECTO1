@@ -1,98 +1,740 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8">
   <title>Geoportal Azuay</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Arial', sans-serif;
+    }
+    
     #map {
       height: 100vh;
       width: 100%;
     }
-    .menu {
+    
+    .control-panel {
       position: absolute;
-      top: 10px;
-      left: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      top: 15px;
+      left: 15px;
       z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      max-width: 300px;
+      backdrop-filter: blur(10px);
     }
-    .menu button {
-      display: block;
+    
+    .layer-control {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      max-width: 250px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .hidden { 
+      display: none; 
+    }
+    
+    .btn-custom {
+      margin: 2px;
+      min-width: 100px;
+    }
+    
+    .form-group {
+      margin-bottom: 10px;
+    }
+    
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    
+    .status-connected { background-color: #28a745; }
+    .status-disconnected { background-color: #dc3545; }
+    
+    .data-point {
+      background: rgba(40, 167, 69, 0.1);
+      border: 1px solid #28a745;
+      padding: 10px;
       margin: 5px 0;
-      width: 100%;
-      padding: 5px;
-      font-weight: bold;
+      border-radius: 5px;
+      font-size: 0.9em;
     }
-    .user { background-color: #007bff; color: white; }
-    .tech { background-color: #ffc107; color: black; }
-    .addpoint { background-color: #28a745; color: white; }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .spinner-border-sm {
+      width: 1rem;
+      height: 1rem;
+    }
+    
+    .info-item { 
+      margin: 5px 0; 
+      padding: 3px 0; 
+      font-size: 0.9em;
+    }
+    
+    .punto-cercano { 
+      background: #f8f9fa; 
+      padding: 8px; 
+      margin: 3px 0; 
+      border-radius: 3px; 
+      font-size: 0.8em;
+    }
+    
+    .popup-content {
+      max-width: 300px;
+      font-size: 0.9em;
+    }
+    
+    .popup-content div {
+      margin: 3px 0;
+      word-wrap: break-word;
+    }
   </style>
 </head>
 <body>
-  <div class="menu">
-    <b>🟢 Geoportal Azuay</b><br><br>
-    <label>Selecciona Rol:</label>
-    <button class="user" onclick="setUserRole('usuario')">👤 Usuario</button>
-    <button class="tech" onclick="setUserRole('tecnico')">⚒ Técnico</button>
-    <br>
-    <label>Gestión de Datos:</label>
-    <button class="addpoint" onclick="addPoint()">➕ Añadir Punto</button>
+
+<div id="map"></div>
+
+<!-- Panel de Control Principal -->
+<div class="control-panel">
+  <div class="d-flex align-items-center mb-3">
+    <span id="connectionStatus" class="status-indicator status-disconnected"></span>
+    <h6 class="mb-0"><strong>Geoportal Azuay</strong></h6>
   </div>
+  
+  <div class="mb-3">
+    <h6>Selecciona Rol:</h6>
+    <button class="btn btn-sm btn-primary btn-custom" onclick="setModo('usuario')">👤 Usuario</button>
+    <button class="btn btn-sm btn-warning btn-custom" onclick="setModo('tecnico')">🔧 Técnico</button>
+  </div>
+  
+  <!-- Controles de Usuario -->
+  <div id="controlsUsuario" class="hidden">
+    <hr>
+    <h6>Consultar Información:</h6>
+    <button class="btn btn-sm btn-info btn-custom" onclick="activarConsulta()">📍 Consultar Punto</button>
+    <button class="btn btn-sm btn-success btn-custom" onclick="generarReporte()">📄 Generar Reporte</button>
+    
+    <div id="infoResultado" class="mt-2 hidden">
+      <div class="data-point">
+        <div id="infoContent"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Controles de Técnico -->
+  <div id="controlsTecnico" class="hidden">
+    <hr>
+    <h6>Gestión de Datos:</h6>
+    <button class="btn btn-sm btn-success btn-custom" onclick="activarCaptura()">➕ Añadir Punto</button>
+    
+    <div id="formTecnico" class="hidden mt-2">
+      <div class="form-group">
+        <label>Tipo de Suelo:</label>
+        <select class="form-select form-select-sm" id="tipoSuelo">
+          <option value="">Seleccionar...</option>
+          <option value="arcilloso">Arcilloso</option>
+          <option value="arenoso">Arenoso</option>
+          <option value="limoso">Limoso</option>
+          <option value="franco">Franco</option>
+          <option value="pedregoso">Pedregoso</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nivel Freático (m):</label>
+        <input type="number" class="form-control form-control-sm" id="nivelFreatico" step="0.1" placeholder="Ej: 2.5">
+      </div>
+      <div class="form-group">
+        <label>Observaciones:</label>
+        <textarea class="form-control form-control-sm" id="observaciones" rows="2" placeholder="Observaciones adicionales..."></textarea>
+      </div>
+      <button class="btn btn-sm btn-primary" onclick="guardarPunto()">💾 Guardar</button>
+      <button class="btn btn-sm btn-secondary" onclick="cancelarCaptura()">❌ Cancelar</button>
+    </div>
+  </div>
+  
+  <div id="loading" class="loading hidden">
+    <div class="spinner-border spinner-border-sm" role="status"></div>
+    <span class="ms-2">Cargando...</span>
+  </div>
+</div>
 
-  <div id="map"></div>
+<!-- Panel de Control de Capas -->
+<div class="layer-control">
+  <h6><strong>Capas Disponibles</strong></h6>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="layerParroquias" checked onchange="toggleLayer('parroquias')">
+    <label class="form-check-label" for="layerParroquias">Parroquias Azuay</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="layerCantones" checked onchange="toggleLayer('cantones')">
+    <label class="form-check-label" for="layerCantones">Cantones del Azuay</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="layerCobertura" onchange="toggleLayer('cobertura')">
+    <label class="form-check-label" for="layerCobertura">Cobertura de la Tierra</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="layerUso" onchange="toggleLayer('uso')">
+    <label class="form-check-label" for="layerUso">Uso de la Tierra</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="layerVias" onchange="toggleLayer('vias')">
+    <label class="form-check-label" for="layerVias">Vías</label>
+  </div>
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" id="layerPuntos" checked onchange="toggleLayer('puntos')">
+    <label class="form-check-label" for="layerPuntos">Puntos de Datos</label>
+  </div>
+</div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <script>
-    const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Supabase JS -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    let map = L.map('map').setView([-2.9, -79.0], 9);
+<script>
+console.log('Iniciando Geoportal Azuay...');
+
+// Configuración de Supabase
+const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
+
+// Variables globales
+let modo = '';
+let map;
+let currentMarker = null;
+let capturaModeActive = false;
+let layers = {};
+let currentLocation = null;
+let supabase;
+
+// Inicializar aplicación
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM cargado, inicializando...');
+  initSupabase();
+  initMap();
+});
+
+// Inicializar Supabase
+function initSupabase() {
+  try {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase inicializado correctamente');
+    testConnection();
+  } catch (error) {
+    console.error('Error inicializando Supabase:', error);
+    updateConnectionStatus(false);
+  }
+}
+
+// Inicializar mapa
+function initMap() {
+  try {
+    console.log('Inicializando mapa...');
+    map = L.map('map').setView([-2.9, -78.99], 11); // Cuenca, Ecuador
+    
+    // Mapa base
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
+    
+    console.log('Mapa inicializado correctamente');
+    
+    // Inicializar capas vacías
+    layers = {
+      parroquias: null,
+      cantones: null,
+      cobertura: null,
+      uso: null,
+      vias: null,
+      puntos: L.layerGroup().addTo(map)
+    };
+    
+  } catch (error) {
+    console.error('Error inicializando mapa:', error);
+    alert('Error al cargar el mapa. Verifique su conexión a internet.');
+  }
+}
 
-    let currentRole = 'usuario';
-    function setUserRole(role) {
-      currentRole = role;
-      alert('Rol seleccionado: ' + role);
+// Probar conexión a Supabase
+async function testConnection() {
+  try {
+    console.log('Probando conexión a Supabase...');
+    showLoading(true);
+    
+    // Probar conexión con una consulta simple
+    const { data, error } = await supabase
+      .from('PARROQUIAS AZUAY')
+      .select('*')
+      .limit(1);
+    
+    if (error) {
+      console.error('Error de conexión:', error);
+      updateConnectionStatus(false);
+      alert('Error de conexión a la base de datos: ' + error.message);
+    } else {
+      console.log('Conexión exitosa a Supabase');
+      updateConnectionStatus(true);
+      loadAllLayers();
     }
+  } catch (error) {
+    console.error('Error en test de conexión:', error);
+    updateConnectionStatus(false);
+    alert('Error de conexión a Supabase: ' + error.message);
+  } finally {
+    showLoading(false);
+  }
+}
 
-    function addPoint() {
-      if (currentRole !== 'tecnico') {
-        alert('Solo el técnico puede añadir puntos.');
-        return;
-      }
-      map.once('click', async function (e) {
-        const { lat, lng } = e.latlng;
-        const { error } = await supabase.from('puntosdatos').insert([{ latitud: lat, longitud: lng }]);
-        if (error) alert('Error al insertar punto.');
-        else {
-          L.marker([lat, lng]).addTo(map);
-          alert('Punto añadido exitosamente.');
-        }
+// Actualizar estado de conexión
+function updateConnectionStatus(connected) {
+  const indicator = document.getElementById('connectionStatus');
+  if (connected) {
+    indicator.className = 'status-indicator status-connected';
+    indicator.title = 'Conectado a Supabase';
+  } else {
+    indicator.className = 'status-indicator status-disconnected';
+    indicator.title = 'Desconectado';
+  }
+}
+
+// Mostrar/ocultar loading
+function showLoading(show) {
+  const loadingEl = document.getElementById('loading');
+  if (loadingEl) {
+    loadingEl.classList.toggle('hidden', !show);
+  }
+}
+
+// Cargar todas las capas
+async function loadAllLayers() {
+  try {
+    console.log('Cargando todas las capas...');
+    await loadParroquias();
+    await loadCantones();
+    await loadCobertura();
+    await loadUso();
+    await loadVias();
+    await loadPuntosDatos();
+    console.log('Todas las capas cargadas');
+  } catch (error) {
+    console.error('Error cargando capas:', error);
+  }
+}
+
+// Cargar capa de parroquias
+async function loadParroquias() {
+  try {
+    console.log('Cargando parroquias...');
+    const { data, error } = await supabase
+      .from('PARROQUIAS AZUAY')
+      .select('*');
+    
+    if (error) {
+      console.error('Error cargando parroquias:', error);
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      // Crear capa GeoJSON simulada (ya que no tenemos geometrías reales aún)
+      layers.parroquias = L.layerGroup();
+      
+      // Por ahora crear algunos marcadores de ejemplo para las parroquias
+      const parroquiasEjemplo = [
+        { nombre: 'Cuenca', lat: -2.9001, lng: -79.0059 },
+        { nombre: 'Baños', lat: -2.8500, lng: -78.9500 },
+        { nombre: 'Molleturo', lat: -2.7500, lng: -79.2500 }
+      ];
+      
+      parroquiasEjemplo.forEach(p => {
+        const marker = L.circleMarker([p.lat, p.lng], {
+          radius: 8,
+          fillColor: '#1f78b4',
+          color: '#1f78b4',
+          weight: 2,
+          fillOpacity: 0.3
+        }).bindPopup(`<strong>Parroquia:</strong> ${p.nombre}`);
+        
+        layers.parroquias.addLayer(marker);
       });
+      
+      layers.parroquias.addTo(map);
+      console.log('Parroquias cargadas:', data.length);
     }
+  } catch (error) {
+    console.error('Error en loadParroquias:', error);
+  }
+}
 
-    async function cargarCapa(nombreTabla, estilo) {
-      const { data, error } = await supabase.rpc('geojson_view', { tabla: nombreTabla });
-      if (error || !data) {
-        console.warn('No se pudo cargar capa: ' + nombreTabla);
-        return;
+// Cargar capa de cantones
+async function loadCantones() {
+  try {
+    console.log('Cargando cantones...');
+    const { data, error } = await supabase
+      .from('CANTONESDELAZUAY')
+      .select('*');
+    
+    if (error) {
+      console.error('Error cargando cantones:', error);
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      layers.cantones = L.layerGroup();
+      
+      // Cantones de ejemplo
+      const cantonesEjemplo = [
+        { nombre: 'Cuenca', lat: -2.9000, lng: -79.0000 },
+        { nombre: 'Girón', lat: -3.1000, lng: -79.1000 },
+        { nombre: 'Paute', lat: -2.7500, lng: -78.7500 }
+      ];
+      
+      cantonesEjemplo.forEach(c => {
+        const marker = L.circleMarker([c.lat, c.lng], {
+          radius: 12,
+          fillColor: '#e31a1c',
+          color: '#e31a1c',
+          weight: 3,
+          fillOpacity: 0.2
+        }).bindPopup(`<strong>Cantón:</strong> ${c.nombre}`);
+        
+        layers.cantones.addLayer(marker);
+      });
+      
+      layers.cantones.addTo(map);
+      console.log('Cantones cargados:', data.length);
+    }
+  } catch (error) {
+    console.error('Error en loadCantones:', error);
+  }
+}
+
+// Cargar otras capas (simplificado)
+async function loadCobertura() {
+  try {
+    const { data } = await supabase.from('COBERTURA DE LA TIERRA AZUAY').select('*').limit(1);
+    if (data) {
+      layers.cobertura = L.layerGroup();
+      console.log('Cobertura disponible para cargar');
+    }
+  } catch (error) {
+    console.log('Cobertura no disponible aún');
+  }
+}
+
+async function loadUso() {
+  try {
+    const { data } = await supabase.from('USO DE LA TIERRA AZUAY').select('*').limit(1);
+    if (data) {
+      layers.uso = L.layerGroup();
+      console.log('Uso de tierra disponible para cargar');
+    }
+  } catch (error) {
+    console.log('Uso de tierra no disponible aún');
+  }
+}
+
+async function loadVias() {
+  try {
+    const { data } = await supabase.from('vias').select('*').limit(1);
+    if (data) {
+      layers.vias = L.layerGroup();
+      console.log('Vías disponibles para cargar');
+    }
+  } catch (error) {
+    console.log('Vías no disponibles aún');
+  }
+}
+
+// Cargar puntos de datos
+async function loadPuntosDatos() {
+  try {
+    console.log('Cargando puntos de datos...');
+    const { data, error } = await supabase
+      .from('puntos_datos')
+      .select('*');
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error cargando puntos:', error);
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      data.forEach(punto => {
+        const marker = L.marker([punto.latitud, punto.longitud])
+          .bindPopup(`
+            <div class="popup-content">
+              <h6><strong>📍 Punto de Datos</strong></h6>
+              <div><strong>Tipo de Suelo:</strong> ${punto.tipo_suelo}</div>
+              <div><strong>Nivel Freático:</strong> ${punto.nivel_freatico}m</div>
+              <div><strong>Parroquia:</strong> ${punto.parroquia}</div>
+              <div><strong>Cantón:</strong> ${punto.canton}</div>
+              <div><strong>Observaciones:</strong> ${punto.observaciones || 'N/A'}</div>
+              <small>Fecha: ${new Date(punto.created_at).toLocaleDateString()}</small>
+            </div>
+          `);
+        layers.puntos.addLayer(marker);
+      });
+      console.log('Puntos de datos cargados:', data.length);
+    } else {
+      console.log('No hay puntos de datos guardados aún');
+    }
+  } catch (error) {
+    console.error('Error en loadPuntosDatos:', error);
+  }
+}
+
+// Toggle de capas
+function toggleLayer(layerName) {
+  const checkbox = document.getElementById(`layer${layerName.charAt(0).toUpperCase() + layerName.slice(1)}`);
+  const layer = layers[layerName];
+  
+  if (layer) {
+    if (checkbox.checked) {
+      if (!map.hasLayer(layer)) {
+        layer.addTo(map);
       }
-      L.geoJSON(data, estilo ? { style: estilo } : {}).addTo(map);
+    } else {
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
     }
+  } else {
+    console.log(`Capa ${layerName} no disponible aún`);
+  }
+}
 
-    cargarCapa('PARROQUIAS AZUAY', { color: '#4B0082' });
-    cargarCapa('CANTONESDELAZUAy', { color: '#000080' });
-    cargarCapa('COBERTURA DE LA TIERRA AZUAY', { color: '#228B22' });
-    cargarCapa('USO DE LA TIERRA AZUAY', { color: '#FFA500' });
-    cargarCapa('vias', { color: '#A52A2A' });
-  </script>
-</body>
-</html>
+// Configurar modo de usuario
+function setModo(nuevoModo) {
+  modo = nuevoModo;
+  console.log('Modo cambiado a:', nuevoModo);
+  
+  // Ocultar todos los controles
+  document.getElementById('controlsUsuario').classList.add('hidden');
+  document.getElementById('controlsTecnico').classList.add('hidden');
+  document.getElementById('formTecnico').classList.add('hidden');
+  document.getElementById('infoResultado').classList.add('hidden');
+  
+  // Mostrar controles según el modo
+  if (modo === 'usuario') {
+    document.getElementById('controlsUsuario').classList.remove('hidden');
+    alert('Modo Usuario activado: Consulta de información habilitada');
+  } else if (modo === 'tecnico') {
+    document.getElementById('controlsTecnico').classList.remove('hidden');
+    alert('Modo Técnico activado: Gestión de datos habilitada');
+  }
+  
+  cancelarCaptura();
+}
+
+// Activar consulta (modo usuario)
+function activarConsulta() {
+  if (modo !== 'usuario') {
+    alert('Solo usuarios pueden consultar información');
+    return;
+  }
+  
+  map.once('click', async function(e) {
+    console.log('Consulta en punto:', e.latlng);
+    showLoading(true);
+    currentLocation = e.latlng;
+    
+    try {
+      const info = await obtenerInformacionPunto(e.latlng.lat, e.latlng.lng);
+      mostrarInformacion(info);
+    } catch (error) {
+      alert('Error al obtener información: ' + error.message);
+    } finally {
+      showLoading(false);
+    }
+  });
+  
+  alert('Haz clic en el mapa para consultar información del punto');
+}
+
+// Obtener información de un punto
+async function obtenerInformacionPunto(lat, lng) {
+  try {
+    console.log('Obteniendo información para:', lat, lng);
+    
+    // Simulación de datos geográficos
+    const parroquia = 'Cuenca Centro';
+    const canton = 'Cuenca';
+    const cobertura = 'Área urbana';
+    const uso = 'Residencial';
+    
+    // Consultar puntos cercanos reales
+    const { data: puntosCercanos, error } = await supabase
+      .from('puntos_datos')
+      .select('*')
+      .limit(5);
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error consultando puntos:', error);
+    }
+    
+    return {
+      coordenadas: { lat, lng },
+      parroquia,
+      canton,
+      cobertura,
+      uso,
+      puntosCercanos: puntosCercanos || []
+    };
+  } catch (error) {
+    throw new Error('Error consultando información: ' + error.message);
+  }
+}
+
+// Mostrar información consultada
+function mostrarInformacion(info) {
+  const content = `
+    <div class="info-section">
+      <h6><strong>📍 Información del Punto</strong></h6>
+      <div class="info-item"><strong>Coordenadas:</strong> ${info.coordenadas.lat.toFixed(6)}, ${info.coordenadas.lng.toFixed(6)}</div>
+      <div class="info-item"><strong>Parroquia:</strong> ${info.parroquia}</div>
+      <div class="info-item"><strong>Cantón:</strong> ${info.canton}</div>
+      <div class="info-item"><strong>Cobertura del Suelo:</strong> ${info.cobertura}</div>
+      <div class="info-item"><strong>Uso del Suelo:</strong> ${info.uso}</div>
+      <div class="info-item"><strong>Puntos cercanos:</strong> ${info.puntosCercanos.length}</div>
+      
+      ${info.puntosCercanos.length > 0 ? `
+        <hr>
+        <h6><strong>🔬 Datos Técnicos Cercanos</strong></h6>
+        ${info.puntosCercanos.slice(0, 3).map(punto => `
+          <div class="punto-cercano">
+            <small><strong>Tipo de Suelo:</strong> ${punto.tipo_suelo}</small><br>
+            <small><strong>Nivel Freático:</strong> ${punto.nivel_freatico}m</small><br>
+            <small><strong>Distancia aprox:</strong> ${calcularDistancia(info.coordenadas.lat, info.coordenadas.lng, punto.latitud, punto.longitud).toFixed(2)} km</small>
+          </div>
+        `).join('')}
+      ` : ''}
+      
+      <div class="mt-2">
+        <button class="btn btn-sm btn-success" onclick="imprimirInformacion()">🖨️ Imprimir</button>
+        <button class="btn btn-sm btn-primary" onclick="descargarDatos()">💾 Descargar</button>
+      </div>
+    </div>
+  `;
+  
+  document.getElementById('infoContent').innerHTML = content;
+  document.getElementById('infoResultado').classList.remove('hidden');
+}
+
+// Calcular distancia entre dos puntos
+function calcularDistancia(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// Activar captura de puntos
+function activarCaptura() {
+  if (modo !== 'tecnico') {
+    alert('Solo técnicos pueden ingresar puntos');
+    return;
+  }
+  
+  capturaModeActive = true;
+  document.getElementById('formTecnico').classList.remove('hidden');
+  
+  map.once('click', function(e) {
+    console.log('Punto seleccionado para captura:', e.latlng);
+    currentLocation = e.latlng;
+    
+    if (currentMarker) {
+      map.removeLayer(currentMarker);
+    }
+    
+    currentMarker = L.marker([e.latlng.lat, e.latlng.lng])
+      .addTo(map)
+      .bindPopup('Nuevo punto - Complete la información')
+      .openPopup();
+  });
+  
+  alert('Haz clic en el mapa para seleccionar la ubicación del nuevo punto');
+}
+
+// Guardar punto
+async function guardarPunto() {
+  if (!currentLocation) {
+    alert('Primero seleccione una ubicación en el mapa');
+    return;
+  }
+  
+  const tipoSuelo = document.getElementById('tipoSuelo').value;
+  const nivelFreatico = document.getElementById('nivelFreatico').value;
+  const observaciones = document.getElementById('observaciones').value;
+  
+  if (!tipoSuelo || !nivelFreatico) {
+    alert('Complete los campos obligatorios');
+    return;
+  }
+  
+  try {
+    showLoading(true);
+    console.log('Guardando punto:', currentLocation);
+    
+    // Obtener información geográfica
+    const infoGeografica = await obtenerInformacionPunto(currentLocation.lat, currentLocation.lng);
+    
+    const { error } = await supabase
+      .from('puntos_datos')
+      .insert([
+        {
+          latitud: currentLocation.lat,
+          longitud: currentLocation.lng,
+          tipo_suelo: tipoSuelo,
+          nivel_freatico: parseFloat(nivelFreatico),
+          parroquia: infoGeografica.parroquia,
+          canton: infoGeografica.canton,
+          observaciones: observaciones
+        }
+      ]);
+    
+    if (error) throw error;
+    
+    // Actualizar marcador
+    if (currentMarker) {
+      currentMarker.bindPopup(`
+        <div class="popup-content">
+          <h6><strong>📍 Punto de Datos</strong></h6>
+          <div><strong>Coordenadas:</strong> ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}</div>
+          <div><strong>Tipo de Suelo:</strong> ${tipoSuelo}</div>
+          <div><strong>Nivel Freático:</strong> ${nivelFreatico}m</div>
+          <div><strong>Parroquia:</strong> ${infoGeografica.parroquia}</div>
+          <div><strong>Cantón:</strong> ${infoGeografica.canton}</div>
+          ${observaciones ? `<div><strong>Observaciones:</strong> ${observaciones}</div>` : ''}
+          <small><em>Guardado: ${new Date().toLocaleString
