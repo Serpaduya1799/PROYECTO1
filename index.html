@@ -737,4 +737,182 @@ async function guardarPunto() {
           <div><strong>Parroquia:</strong> ${infoGeografica.parroquia}</div>
           <div><strong>Cantón:</strong> ${infoGeografica.canton}</div>
           ${observaciones ? `<div><strong>Observaciones:</strong> ${observaciones}</div>` : ''}
-          <small><em>Guardado: ${new Date().toLocaleString
+          <small><em>Guardado: ${new Date().toLocaleString('es-EC')}</em></small>
+        </div>
+      `);
+      
+      // Añadir a la capa de puntos
+      layers.puntos.addLayer(currentMarker);
+    }
+    
+    alert(`Punto guardado exitosamente en:\n- Parroquia: ${infoGeografica.parroquia}\n- Cantón: ${infoGeografica.canton}`);
+    cancelarCaptura();
+    
+  } catch (error) {
+    console.error('Error guardando punto:', error);
+    alert('Error al guardar punto: ' + error.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Cancelar captura
+function cancelarCaptura() {
+  capturaModeActive = false;
+  currentLocation = null;
+  
+  if (currentMarker && !layers.puntos.hasLayer(currentMarker)) {
+    map.removeLayer(currentMarker);
+    currentMarker = null;
+  }
+  
+  document.getElementById('formTecnico').classList.add('hidden');
+  
+  // Limpiar formulario
+  document.getElementById('tipoSuelo').value = '';
+  document.getElementById('nivelFreatico').value = '';
+  document.getElementById('observaciones').value = '';
+}
+
+// Imprimir información
+function imprimirInformacion() {
+  if (!currentLocation) {
+    alert('No hay información para imprimir');
+    return;
+  }
+  
+  const printWindow = window.open('', '_blank');
+  const content = document.getElementById('infoContent').innerHTML;
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Reporte Geológico - Azuay</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .info-section { max-width: 600px; }
+        .info-item { margin: 8px 0; padding: 5px 0; border-bottom: 1px solid #eee; }
+        .punto-cercano { background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px; }
+        h6 { color: #333; margin: 15px 0 10px 0; }
+        button { display: none; }
+      </style>
+    </head>
+    <body>
+      <h2>🌍 Reporte Geológico - Provincia del Azuay</h2>
+      <p><strong>Fecha de consulta:</strong> ${new Date().toLocaleDateString('es-EC', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}</p>
+      ${content}
+      <hr>
+      <p><small>Documento generado automáticamente por el Geoportal Azuay</small></p>
+    </body>
+    </html>
+  `);
+  
+  printWindow.document.close();
+  printWindow.print();
+}
+
+// Descargar datos
+function descargarDatos() {
+  if (!currentLocation) {
+    alert('No hay información para descargar');
+    return;
+  }
+  
+  obtenerInformacionPunto(currentLocation.lat, currentLocation.lng)
+    .then(info => {
+      const dataToDownload = {
+        fecha_consulta: new Date().toISOString(),
+        coordenadas: info.coordenadas,
+        ubicacion: {
+          parroquia: info.parroquia,
+          canton: info.canton
+        },
+        caracteristicas: {
+          cobertura_suelo: info.cobertura,
+          uso_suelo: info.uso
+        },
+        puntos_tecnicos_cercanos: info.puntosCercanos,
+        metadata: {
+          sistema_coordenadas: 'WGS84',
+          datum: 'EPSG:4326',
+          fuente: 'Geoportal Azuay'
+        }
+      };
+      
+      const blob = new Blob([JSON.stringify(dataToDownload, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `datos_geologicos_${info.coordenadas.lat.toFixed(6)}_${info.coordenadas.lng.toFixed(6)}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      
+      alert('Datos descargados exitosamente');
+    })
+    .catch(error => {
+      alert('Error al descargar datos: ' + error.message);
+    });
+}
+
+// Generar reporte
+async function generarReporte() {
+  if (!currentLocation) {
+    alert('Primero consulte un punto en el mapa');
+    return;
+  }
+  
+  try {
+    showLoading(true);
+    
+    const { data, error } = await supabase
+      .from('puntos_datos')
+      .select('*');
+    
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    // Crear contenido del reporte
+    const reportContent = `
+REPORTE DE INFORMACIÓN GEOLÓGICA
+================================
+Fecha: ${new Date().toLocaleDateString()}
+Coordenadas consultadas: ${currentLocation.lat.toFixed(5)}, ${currentLocation.lng.toFixed(5)}
+
+PUNTOS DE DATOS DISPONIBLES:
+${(data || []).map(punto => `
+- Coordenadas: ${punto.latitud}, ${punto.longitud}
+- Tipo de Suelo: ${punto.tipo_suelo}
+- Nivel Freático: ${punto.nivel_freatico}m
+- Parroquia: ${punto.parroquia}
+- Cantón: ${punto.canton}
+- Fecha: ${new Date(punto.created_at).toLocaleDateString()}
+`).join('\n')}
+    `;
+    
+    // Descargar reporte
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_geologico_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    alert('Error al generar reporte: ' + error.message);
+  } finally {
+    showLoading(false);
+  }
+}
