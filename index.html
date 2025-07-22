@@ -628,26 +628,95 @@
         }
         
         // Funciones de base de datos
+        // Función auxiliar para convertir coordenadas si están en formato incorrecto
+        function parseGeometry(geomData) {
+            if (!geomData) return null;
+            
+            try {
+                let geometry;
+                
+                if (typeof geomData === 'string') {
+                    // Si es un string, intentar parsearlo como JSON
+                    if (geomData.startsWith('{')) {
+                        geometry = JSON.parse(geomData);
+                    } else if (geomData.startsWith('POLYGON') || geomData.startsWith('MULTIPOLYGON') || 
+                               geomData.startsWith('LINESTRING') || geomData.startsWith('POINT')) {
+                        // Es formato WKT, mostrar mensaje informativo
+                        console.warn('Geometría en formato WKT detectada:', geomData.substring(0, 50) + '...');
+                        return null;
+                    } else {
+                        // Intentar parsear como JSON de todos modos
+                        geometry = JSON.parse(geomData);
+                    }
+                } else if (typeof geomData === 'object') {
+                    geometry = geomData;
+                } else {
+                    return null;
+                }
+                
+                // Validar que tenga la estructura correcta de GeoJSON
+                if (!geometry.type || !geometry.coordinates) {
+                    console.warn('Geometría sin estructura GeoJSON válida');
+                    return null;
+                }
+                
+                return geometry;
+            } catch (error) {
+                console.warn('Error parseando geometría:', error);
+                return null;
+            }
+        }
+        
+        // Función mejorada para manejar la respuesta de Supabase
         async function fetchFromSupabase(table, select = '*', limit = null) {
             try {
-                let url = `${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?select=${select}`;
+                // Mapear nombres de tablas para evitar problemas con espacios
+                const tableMapping = {
+                    'COBERTURA DE LA TIERRA AZUAY': 'COBERTURA%20DE%20LA%20TIERRA%20AZUAY',
+                    'USO DE LA TIERRA AZUAY': 'USO%20DE%20LA%20TIERRA%20AZUAY',
+                    'CANTONESDELAZUAY': 'CANTONESDELAZUAY',
+                    'PARROQUIAS AZUAY': 'PARROQUIAS%20AZUAY',
+                    'vias': 'vias',
+                    'puntos_datos': 'puntos_datos'
+                };
+                
+                const encodedTable = tableMapping[table] || encodeURIComponent(table);
+                let url = `${SUPABASE_URL}/rest/v1/${encodedTable}?select=${encodeURIComponent(select)}`;
                 if (limit) {
                     url += `&limit=${limit}`;
                 }
+                
+                console.log('Fetching from URL:', url);
                 
                 const response = await fetch(url, {
                     headers: {
                         'apikey': SUPABASE_KEY,
                         'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     }
                 });
                 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    
+                    // Mensajes de error más específicos
+                    if (response.status === 400) {
+                        throw new Error(`Error de consulta (400): Posible problema con nombres de columnas o formato`);
+                    } else if (response.status === 401) {
+                        throw new Error(`Error de autenticación (401): Verifica las credenciales de Supabase`);
+                    } else if (response.status === 404) {
+                        throw new Error(`Tabla no encontrada (404): "${table}" no existe`);
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+                    }
                 }
                 
-                return await response.json();
+                const data = await response.json();
+                console.log(`Datos recibidos de ${table}:`, data.length, 'registros');
+                return data;
+                
             } catch (error) {
                 console.error('Error fetching from Supabase:', error);
                 throw error;
@@ -884,31 +953,36 @@
                     table: 'COBERTURA DE LA TIERRA AZUAY',
                     color: '#46a049',
                     type: 'fill',
-                    infoFields: ['descr', 'niv1', 'niv2', 'uso', 'DPA_DESCAN']
+                    infoFields: ['descr', 'niv1', 'niv2', 'niv3', 'niv4', 'niv5', 'uso', 'DPA_DESCAN', 'DPA_DESPRO', 'cbt', 'nal'],
+                    displayName: 'Cobertura de la Tierra'
                 },
                 'uso-tierra': {
                     table: 'USO DE LA TIERRA AZUAY',
                     color: '#f4a261',
                     type: 'fill',
-                    infoFields: ['descr', 'cag_desc', 'pen_desc', 'DPA_DESCAN']
+                    infoFields: ['descr', 'cag_desc', 'pen_desc', 'DPA_DESCAN', 'DPA_DESPRO', 'lmt', 'udm', 'txs', 'wcs'],
+                    displayName: 'Uso de la Tierra'
                 },
                 'cantones': {
                     table: 'CANTONESDELAZUAY',
                     color: '#e76f51',
                     type: 'line',
-                    infoFields: ['DPA_DESCAN', 'DPA_DESPRO']
+                    infoFields: ['DPA_DESCAN', 'DPA_DESPRO'],
+                    displayName: 'Cantones del Azuay'
                 },
                 'parroquias': {
                     table: 'PARROQUIAS AZUAY',
                     color: '#264653',
                     type: 'line',
-                    infoFields: ['DPA_DESPAR', 'DPA_DESCAN', 'DPA_DESPRO']
+                    infoFields: ['DPA_DESPAR', 'DPA_DESCAN', 'DPA_DESPRO'],
+                    displayName: 'Parroquias del Azuay'
                 },
                 'vias': {
                     table: 'vias',
                     color: '#2a9d8f',
                     type: 'line',
-                    infoFields: ['nombre', 'tipo', 'estado']
+                    infoFields: ['nombre', 'tipo', 'estado'],
+                    displayName: 'Vías'
                 }
             };
             
@@ -917,35 +991,80 @@
             
             try {
                 showLoading(true);
+                showMessage(`Cargando capa ${config.displayName}...`, 'success');
                 
-                // Intentar cargar datos reales de la tabla
-                const data = await fetchFromSupabase(config.table, 'id,geom,' + config.infoFields.join(','), 100);
+                // Para las capas de cobertura y uso de tierra, usar menos campos en la consulta inicial
+                let selectFields = 'id,geom';
+                if (layerId === 'cobertura' || layerId === 'uso-tierra') {
+                    selectFields += ',descr,DPA_DESCAN';
+                    if (layerId === 'cobertura') {
+                        selectFields += ',niv1,niv2,niv3,uso,cbt';
+                    } else {
+                        selectFields += ',cag_desc,pen_desc,lmt';
+                    }
+                } else {
+                    selectFields += ',' + config.infoFields.join(',');
+                }
+                
+                console.log(`Cargando ${config.table} con campos: ${selectFields}`);
+                
+                // Intentar cargar con un límite menor primero
+                const data = await fetchFromSupabase(config.table, selectFields, 50);
+                console.log(`Datos recibidos para ${layerId}:`, data);
                 
                 if (data && data.length > 0) {
                     const features = [];
+                    let processedCount = 0;
                     
                     for (let item of data) {
                         try {
-                            let geometry;
-                            if (typeof item.geom === 'string') {
-                                geometry = JSON.parse(item.geom);
-                            } else {
-                                geometry = item.geom;
+                            if (!item.geom) {
+                                console.warn('Item sin geometría:', item.id);
+                                continue;
                             }
                             
-                            const properties = {};
-                            config.infoFields.forEach(field => {
-                                properties[field] = item[field] || 'N/A';
-                            });
-                            properties.id = item.id;
+                            const geometry = parseGeometry(item.geom);
+                            if (!geometry) {
+                                console.warn('No se pudo procesar la geometría para item:', item.id);
+                                continue;
+                            }
+                            
+                            const properties = {
+                                id: item.id,
+                                layer_name: config.displayName
+                            };
+                            
+                            // Agregar campos específicos según la capa
+                            if (layerId === 'cobertura') {
+                                properties.descripcion = item.descr || 'Sin descripción';
+                                properties.nivel_1 = item.niv1 || 'N/A';
+                                properties.nivel_2 = item.niv2 || 'N/A';
+                                properties.nivel_3 = item.niv3 || 'N/A';
+                                properties.uso = item.uso || 'N/A';
+                                properties.cobertura = item.cbt || 'N/A';
+                                properties.canton = item.DPA_DESCAN || 'N/A';
+                            } else if (layerId === 'uso-tierra') {
+                                properties.descripcion = item.descr || 'Sin descripción';
+                                properties.categoria = item.cag_desc || 'N/A';
+                                properties.pendiente = item.pen_desc || 'N/A';
+                                properties.limitacion = item.lmt || 'N/A';
+                                properties.canton = item.DPA_DESCAN || 'N/A';
+                            } else {
+                                config.infoFields.forEach(field => {
+                                    properties[field] = item[field] || 'N/A';
+                                });
+                            }
                             
                             features.push({
                                 type: 'Feature',
                                 geometry: geometry,
                                 properties: properties
                             });
+                            
+                            processedCount++;
+                            
                         } catch (parseError) {
-                            console.warn('Error parseando geometría:', parseError);
+                            console.warn('Error procesando item:', parseError, item);
                         }
                     }
                     
@@ -957,17 +1076,23 @@
                         
                         addLayerToMap(layerId, geojson, config);
                         showLayerInfo(layerId, features, config);
-                        showMessage(`Capa "${layerId}" cargada: ${features.length} elementos`, 'success');
+                        showMessage(`Capa "${config.displayName}" cargada: ${features.length} elementos de ${data.length} procesados`, 'success');
                     } else {
-                        showMessage(`No se pudieron procesar los datos de la capa "${layerId}"`, 'error');
+                        showMessage(`No se pudieron procesar geometrías válidas para "${config.displayName}"`, 'error');
+                        document.getElementById(layerId).checked = false;
                     }
                 } else {
-                    showMessage(`No se encontraron datos para la capa "${layerId}"`, 'error');
+                    showMessage(`No se encontraron datos para la capa "${config.displayName}"`, 'error');
+                    document.getElementById(layerId).checked = false;
                 }
                 
             } catch (error) {
                 console.error('Error loading layer:', error);
-                showMessage('Error al cargar la capa: ' + error.message, 'error');
+                if (error.message.includes('400')) {
+                    showMessage(`Error de consulta en "${config.displayName}". Verifica los permisos de la tabla.`, 'error');
+                } else {
+                    showMessage('Error al cargar la capa: ' + error.message, 'error');
+                }
                 
                 // Desmarcar checkbox si hay error
                 document.getElementById(layerId).checked = false;
@@ -984,26 +1109,32 @@
             });
             
             if (config.type === 'fill') {
-                // Capa de relleno
+                // Capa de relleno con transparencia
                 map.addLayer({
                     id: layerId,
                     type: 'fill',
                     source: layerId,
                     paint: {
                         'fill-color': config.color,
-                        'fill-opacity': 0.3
+                        'fill-opacity': 0.4
                     }
                 });
                 
-                // Contorno
+                // Contorno más visible
                 map.addLayer({
                     id: layerId + '-outline',
                     type: 'line',
                     source: layerId,
                     paint: {
                         'line-color': config.color,
-                        'line-width': 2,
-                        'line-opacity': 0.8
+                        'line-width': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            8, 1,
+                            14, 2
+                        ],
+                        'line-opacity': 0.9
                     }
                 });
             } else if (config.type === 'line') {
@@ -1026,21 +1157,87 @@
                 });
             }
             
-            // Agregar eventos de click para mostrar información
+            // Agregar eventos de click para mostrar información detallada
             map.on('click', layerId, (e) => {
                 const props = e.features[0].properties;
-                let content = `<div style="padding: 15px; min-width: 250px;">
-                    <h4 style="margin: 0 0 10px 0; color: #2d3748;">📋 ${layerId.toUpperCase()}</h4>`;
+                let content = `<div style="padding: 15px; min-width: 300px; max-width: 400px;">
+                    <h4 style="margin: 0 0 15px 0; color: #2d3748; border-bottom: 2px solid ${config.color}; padding-bottom: 5px;">
+                        📋 ${props.layer_name || config.displayName}
+                    </h4>`;
                 
-                config.infoFields.forEach(field => {
-                    if (props[field] && props[field] !== 'N/A') {
-                        content += `<p style="margin: 5px 0;"><strong>${field}:</strong> ${props[field]}</p>`;
-                    }
-                });
+                // Información específica para cada tipo de capa
+                if (layerId === 'cobertura') {
+                    content += `
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #4a5568;">Descripción:</strong><br>
+                            <span style="color: #2d3748;">${props.descripcion}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div>
+                                <strong style="color: #4a5568;">Nivel 1:</strong><br>
+                                <span style="color: #2d3748; font-size: 0.9em;">${props.nivel_1}</span>
+                            </div>
+                            <div>
+                                <strong style="color: #4a5568;">Nivel 2:</strong><br>
+                                <span style="color: #2d3748; font-size: 0.9em;">${props.nivel_2}</span>
+                            </div>
+                            <div>
+                                <strong style="color: #4a5568;">Nivel 3:</strong><br>
+                                <span style="color: #2d3748; font-size: 0.9em;">${props.nivel_3}</span>
+                            </div>
+                            <div>
+                                <strong style="color: #4a5568;">Uso:</strong><br>
+                                <span style="color: #2d3748; font-size: 0.9em;">${props.uso}</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #4a5568;">Cobertura:</strong> 
+                            <span style="color: #2d3748;">${props.cobertura}</span>
+                        </div>
+                        <div style="margin-bottom: 5px;">
+                            <strong style="color: #4a5568;">Cantón:</strong> 
+                            <span style="color: #2d3748;">${props.canton}</span>
+                        </div>
+                    `;
+                } else if (layerId === 'uso-tierra') {
+                    content += `
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #4a5568;">Descripción:</strong><br>
+                            <span style="color: #2d3748;">${props.descripcion}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div>
+                                <strong style="color: #4a5568;">Categoría:</strong><br>
+                                <span style="color: #2d3748; font-size: 0.9em;">${props.categoria}</span>
+                            </div>
+                            <div>
+                                <strong style="color: #4a5568;">Pendiente:</strong><br>
+                                <span style="color: #2d3748; font-size: 0.9em;">${props.pendiente}</span>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong style="color: #4a5568;">Limitación:</strong> 
+                            <span style="color: #2d3748;">${props.limitacion}</span>
+                        </div>
+                        <div style="margin-bottom: 5px;">
+                            <strong style="color: #4a5568;">Cantón:</strong> 
+                            <span style="color: #2d3748;">${props.canton}</span>
+                        </div>
+                    `;
+                } else {
+                    // Para otras capas, mostrar todos los campos disponibles
+                    Object.entries(props).forEach(([key, value]) => {
+                        if (key !== 'id' && key !== 'layer_name' && value && value !== 'N/A') {
+                            content += `<p style="margin: 5px 0;"><strong style="color: #4a5568;">${key}:</strong> <span style="color: #2d3748;">${value}</span></p>`;
+                        }
+                    });
+                }
                 
-                content += '</div>';
+                content += `<div style="margin-top: 10px; font-size: 0.8em; color: #718096;">ID: ${props.id}</div></div>`;
                 
-                new mapboxgl.Popup()
+                new mapboxgl.Popup({
+                    maxWidth: '400px'
+                })
                     .setLngLat(e.lngLat)
                     .setHTML(content)
                     .addTo(map);
@@ -1056,6 +1253,99 @@
         }
         
         function showLayerInfo(layerId, features, config) {
+            const infoDiv = document.getElementById('layerInfo');
+            
+            let html = `<div style="background: #f8fafc; border-radius: 8px; padding: 15px;">
+                       <h4 style="color: #2d3748; margin-bottom: 10px;">${config.displayName}</h4>
+                       <p><strong>Elementos cargados:</strong> ${features.length}</p>
+                       <p><strong>Tipo de geometría:</strong> ${config.type === 'fill' ? 'Polígonos' : 'Líneas'}</p>`;
+            
+            if (layerId === 'cobertura') {
+                html += `
+                    <div style="margin-top: 15px;">
+                        <h5 style="color: #4a5568; margin-bottom: 8px;">🌿 Información de Cobertura</h5>
+                        <p style="font-size: 0.9em; margin-bottom: 5px;">
+                            <strong>Campos principales:</strong>
+                        </p>
+                        <ul style="font-size: 0.8em; margin: 5px 0; padding-left: 20px; color: #666;">
+                            <li><strong>Descripción:</strong> Tipo de cobertura del suelo</li>
+                            <li><strong>Niveles 1-3:</strong> Clasificación jerárquica</li>
+                            <li><strong>Uso:</strong> Uso actual del terreno</li>
+                            <li><strong>Cobertura:</strong> Tipo específico de cobertura</li>
+                            <li><strong>Cantón:</strong> División administrativa</li>
+                        </ul>
+                        <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                            💡 Haz clic en cualquier área del mapa para ver información detallada
+                        </p>
+                    </div>
+                `;
+            } else if (layerId === 'uso-tierra') {
+                html += `
+                    <div style="margin-top: 15px;">
+                        <h5 style="color: #4a5568; margin-bottom: 8px;">🏞️ Información de Uso de Tierra</h5>
+                        <p style="font-size: 0.9em; margin-bottom: 5px;">
+                            <strong>Campos principales:</strong>
+                        </p>
+                        <ul style="font-size: 0.8em; margin: 5px 0; padding-left: 20px; color: #666;">
+                            <li><strong>Descripción:</strong> Tipo de uso del suelo</li>
+                            <li><strong>Categoría:</strong> Clasificación de uso</li>
+                            <li><strong>Pendiente:</strong> Características topográficas</li>
+                            <li><strong>Limitación:</strong> Restricciones de uso</li>
+                            <li><strong>Cantón:</strong> División administrativa</li>
+                        </ul>
+                        <p style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                            💡 Haz clic en cualquier área del mapa para ver información detallada
+                        </p>
+                    </div>
+                `;
+            } else {
+                html += `<div style="margin-top: 10px;">
+                        <h5>Campos disponibles:</h5>
+                        <ul style="margin: 5px 0; padding-left: 20px; font-size: 0.9em;">`;
+                
+                config.infoFields.forEach(field => {
+                    html += `<li>${field}</li>`;
+                });
+                
+                html += '</ul></div>';
+            }
+            
+            // Agregar estadísticas básicas para las capas principales
+            if (layerId === 'cobertura' || layerId === 'uso-tierra') {
+                const descStats = {};
+                features.forEach(feature => {
+                    const desc = feature.properties.descripcion || 'Sin clasificar';
+                    descStats[desc] = (descStats[desc] || 0) + 1;
+                });
+                
+                const topCategories = Object.entries(descStats)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5);
+                
+                if (topCategories.length > 0) {
+                    html += `
+                        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e2e8f0;">
+                            <h5 style="color: #4a5568; margin-bottom: 8px;">📊 Categorías más comunes:</h5>
+                            <div style="font-size: 0.8em;">
+                    `;
+                    
+                    topCategories.forEach(([category, count]) => {
+                        const percentage = ((count / features.length) * 100).toFixed(1);
+                        html += `
+                            <div style="margin-bottom: 5px; padding: 3px 6px; background: #e2e8f0; border-radius: 4px;">
+                                <div style="font-weight: 500; color: #2d3748;">${category}</div>
+                                <div style="color: #666;">${count} elementos (${percentage}%)</div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div></div>';
+                }
+            }
+            
+            html += '</div>';
+            infoDiv.innerHTML = html;
+        }) {
             const infoDiv = document.getElementById('layerInfo');
             
             let html = `<h4>${layerId.toUpperCase()}</h4>
