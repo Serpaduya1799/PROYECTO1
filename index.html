@@ -1,143 +1,78 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Geoportal Satelital</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <title>Geoportal de Suelos - Ejemplo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
-    #map { height: 100vh; }
-    #panel {
-      position: absolute;
-      top: 0;
-      right: -400px;
-      width: 350px;
+    html, body, #map {
       height: 100%;
-      background: white;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.3);
-      padding: 20px;
-      z-index: 1000;
-      transition: right 0.3s;
+      margin: 0;
     }
-    #panel.active { right: 0; }
-    #openPanelBtn {
+    .control-panel {
       position: absolute;
-      top: 20px;
-      right: 20px;
-      z-index: 1100;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
     }
   </style>
 </head>
 <body>
 
 <div id="map"></div>
-<button id="openPanelBtn" class="btn btn-primary">Cargar datos de suelo</button>
 
-<div id="panel">
-  <h5>Registrar muestra de suelo</h5>
-  <form id="formulario">
-    <div class="mb-2">
-      <label>Nombre:</label>
-      <input type="text" id="nombre" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label>Límite líquido (%):</label>
-      <input type="number" id="limite" class="form-control" step="0.1" required>
-    </div>
-    <div class="mb-2">
-      <label>Clasificación del suelo:</label>
-      <select id="clasificacion" class="form-select">
-        <option value="Arcilla">Arcilla</option>
-        <option value="Arena">Arena</option>
-        <option value="Limo">Limo</option>
-        <option value="Grava">Grava</option>
-      </select>
-    </div>
-    <div class="mb-3">
-      <label>Nivel freático (m):</label>
-      <input type="number" id="freatico" class="form-control" step="0.1" required>
-    </div>
-    <button type="submit" class="btn btn-success w-100">Guardar muestra</button>
-  </form>
+<div class="control-panel">
+  <h6><strong>Datos Geotécnicos</strong></h6>
+  <button class="btn btn-sm btn-primary mb-1" onclick="cargarDatos()">Cargar Datos de Suelo</button>
+  <select class="form-select form-select-sm mt-2" id="tipoDato">
+    <option value="ll">Límite Líquido</option>
+    <option value="lp">Límite Plástico</option>
+    <option value="w">Contenido de humedad</option>
+    <option value="nf">Nivel Freático</option>
+    <option value="clasificacion">Clasificación de Suelo</option>
+  </select>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  const supabaseUrl = 'https://xgywnwvvrtfoltkcxfgc.supabase.co'
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY'
-  const supabase = supabase.createClient(supabaseUrl, supabaseKey)
+  // Inicializar mapa centrado en Cuenca, Ecuador
+  const map = L.map('map').setView([-2.9, -78.99], 13);
 
-  let selectedLatLng = null
-  let markerSeleccion = null
+  // Mapa base de Mapbox con TU TOKEN
+  L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoic2VycGFkdXlhMTciLCJhIjoiY21kZTM1d3RhMGJjajJscHM0emIzYjVheCJ9.n9I1c8_WHPDSz7_pzU5rwA', {
+    attribution: '&copy; <a href="https://www.mapbox.com/">Mapbox</a>',
+    tileSize: 512,
+    zoomOffset: -1
+  }).addTo(map);
 
-  const map = L.map('map').setView([-1.5, -78.5], 6)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 19
-  }).addTo(map)
+  // Captura de punto y carga de dato
+  function cargarDatos() {
+    map.once('click', function (e) {
+      const latlng = e.latlng;
+      const tipoDato = document.getElementById('tipoDato').value;
 
-  async function cargarMuestras() {
-    const { data, error } = await supabase.from('muestras_suelo').select('*')
-    if (error) console.error(error)
-    data.forEach(p => {
-      if (p.geom && p.geom.coordinates) {
-        const [lon, lat] = p.geom.coordinates
-        L.marker([lat, lon]).addTo(map).bindPopup(`
-          <b>${p.nombre}</b><br>
-          Límite líquido: ${p.limite_liquido}%<br>
-          Clasificación: ${p.clasificacion_suelo}<br>
-          Nivel freático: ${p.nivel_freatico} m
-        `)
+      const valor = prompt(`Ingrese valor para ${tipoDato.replace("_", " ").toUpperCase()}:`);
+      if (valor !== null && valor.trim() !== '') {
+        L.marker(latlng).addTo(map)
+          .bindPopup(`<b>${tipoDato.toUpperCase()}:</b> ${valor}<br><b>Ubicación:</b> ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`)
+          .openPopup();
       }
-    })
+    });
+    alert("Haga clic en el mapa para ubicar el dato.");
   }
-
-  cargarMuestras()
-
-  map.on('click', function (e) {
-    selectedLatLng = e.latlng
-    if (markerSeleccion) map.removeLayer(markerSeleccion)
-    markerSeleccion = L.marker(e.latlng).addTo(map).bindPopup('Ubicación seleccionada').openPopup()
-    panel.classList.add('active')
-  })
-
-  const panel = document.getElementById('panel')
-  document.getElementById('openPanelBtn').addEventListener('click', () => {
-    if (selectedLatLng) {
-      panel.classList.add('active')
-    } else {
-      alert('Haz clic en el mapa para seleccionar una ubicación primero.')
-    }
-  })
-
-  document.getElementById('formulario').addEventListener('submit', async (e) => {
-    e.preventDefault()
-    if (!selectedLatLng) return alert("Selecciona un punto en el mapa primero.")
-
-    const { lat, lng } = selectedLatLng
-    const nombre = document.getElementById('nombre').value
-    const limite = parseFloat(document.getElementById('limite').value)
-    const clasificacion = document.getElementById('clasificacion').value
-    const freatico = parseFloat(document.getElementById('freatico').value)
-
-    const { error } = await supabase.from('muestras_suelo').insert({
-      nombre,
-      limite_liquido: limite,
-      clasificacion_suelo: clasificacion,
-      nivel_freatico: freatico,
-      geom: { type: 'Point', coordinates: [lng, lat] }
-    })
-
-    if (error) return alert('Error: ' + error.message)
-    alert('Muestra guardada correctamente.')
-    location.reload()
-  })
 </script>
 
 </body>
