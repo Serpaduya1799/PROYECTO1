@@ -437,6 +437,8 @@
     </div>
 
     <script>
+        console.log('🚀 Iniciando Geoportal Azuay...');
+        
         // Configuración con validación
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2VycGFkdXlhMTciLCJhIjoiY21kZTM1d3RhMGJjajJscHM0emIzYjVheCJ9.n9I1c8_WHPDSz7_pzU5rwA';
         const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
@@ -461,7 +463,7 @@
         }
         
         // Estado global
-        let map;
+        let map = null;
         let currentUser = null;
         let selectedCoordinates = null;
         let loadedLayers = {};
@@ -470,11 +472,75 @@
         console.log('Configurando Mapbox...');
         try {
             validateConfig();
-            mapboxgl.accessToken = MAPBOX_TOKEN;
-            console.log('Mapbox configurado correctamente');
+            if (typeof mapboxgl !== 'undefined') {
+                mapboxgl.accessToken = MAPBOX_TOKEN;
+                console.log('Mapbox configurado correctamente');
+            } else {
+                console.error('Mapbox GL JS no está disponible');
+            }
         } catch (error) {
             console.error('Error en configuración:', error);
         }
+        
+        // Funciones globales para HTML - deben estar al inicio
+        window.toggleLayer = function(layerId) {
+            console.log('toggleLayer called:', layerId);
+            const checkbox = document.getElementById(layerId);
+            
+            if (checkbox && checkbox.checked) {
+                loadLayer(layerId);
+            } else {
+                removeLayer(layerId);
+            }
+        };
+        
+        window.showLogin = function(type) {
+            console.log('showLogin called:', type);
+            const modal = document.getElementById('loginModal');
+            const title = document.getElementById('modalTitle');
+            const subtitle = document.getElementById('modalSubtitle');
+            
+            if (type === 'usuario') {
+                title.textContent = 'Acceso de Usuario';
+                subtitle.textContent = 'Visualización y descarga de datos';
+            } else {
+                title.textContent = 'Acceso Técnico';
+                subtitle.textContent = 'Ingreso de datos al sistema';
+            }
+            
+            modal.classList.remove('hidden');
+            modal.dataset.userType = type;
+        };
+        
+        window.closeLogin = function() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('loginForm').reset();
+        };
+        
+        window.logout = function() {
+            currentUser = null;
+            selectedCoordinates = null;
+            
+            document.getElementById('userDisplay').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('technicalControls').classList.add('hidden');
+            document.getElementById('userControls').classList.add('hidden');
+            const selectedCoords = document.getElementById('selectedCoords');
+            if (selectedCoords) selectedCoords.innerHTML = '';
+            
+            removeTemporaryMarker();
+            showMessage('Sesión cerrada', 'success');
+        };
+        
+        window.saveDataPoint = function() {
+            console.log('saveDataPoint called');
+            saveDataPointInternal();
+        };
+        
+        window.generateReport = function() {
+            console.log('generateReport called');
+            generateReportInternal();
+        };
         
         // Inicializar aplicación
         document.addEventListener('DOMContentLoaded', function() {
@@ -490,11 +556,50 @@
             console.log('Mapbox GL JS version:', mapboxgl.version);
             console.log('DOM loaded, initializing map...');
             
+            // Configurar eventos de formulario
+            setupEventListeners();
+            
             // Pequeño delay para asegurar que todo esté listo
             setTimeout(() => {
                 initMap();
             }, 100);
         });
+        
+        function setupEventListeners() {
+            // Login form
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const userType = document.getElementById('loginModal').dataset.userType;
+                    const username = document.getElementById('username').value;
+                    
+                    // Validación simple
+                    if (username.length < 3) {
+                        showMessage('El usuario debe tener al menos 3 caracteres', 'error');
+                        return;
+                    }
+                    
+                    currentUser = {
+                        type: userType,
+                        username: username
+                    };
+                    
+                    document.getElementById('userDisplay').textContent = `${username} (${userType})`;
+                    document.getElementById('userDisplay').classList.remove('hidden');
+                    document.getElementById('logoutBtn').classList.remove('hidden');
+                    
+                    if (userType === 'tecnico') {
+                        document.getElementById('technicalControls').classList.remove('hidden');
+                    } else {
+                        document.getElementById('userControls').classList.remove('hidden');
+                    }
+                    
+                    closeLogin();
+                    showMessage(`¡Bienvenido ${username}!`, 'success');
+                });
+            }
+        }
         
         function initMap() {
             try {
@@ -1033,28 +1138,247 @@
             }
         }
         
-        // Funciones de capas
-        function toggleLayer(layerId) {
-            const checkbox = document.getElementById(layerId);
-            
-            if (checkbox.checked) {
-                loadLayer(layerId);
-            } else {
-                removeLayer(layerId);
-            }
-        }
-        
         function removeLayer(layerId) {
             const layersToRemove = [layerId, layerId + '-outline', layerId + '-labels'];
             
-            layersToRemove.forEach(layer => {
-                if (map.getLayer(layer)) {
-                    map.removeLayer(layer);
+            if (map) {
+                layersToRemove.forEach(layer => {
+                    if (map.getLayer && map.getLayer(layer)) {
+                        map.removeLayer(layer);
+                    }
+                });
+                
+                if (map.getSource && map.getSource(layerId)) {
+                    map.removeSource(layerId);
                 }
-            });
+            }
+        }
+        
+        function removeTemporaryMarker() {
+            if (map && map.getLayer && map.getLayer('temp-point')) {
+                map.removeLayer('temp-point');
+                map.removeSource('temp-point');
+            }
+        }
+        
+        function addTemporaryMarker(coordinates) {
+            if (!map) return;
             
-            if (map.getSource(layerId)) {
-                map.removeSource(layerId);
+            if (map.getSource('temp-point')) {
+                map.getSource('temp-point').setData({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coordinates
+                    }
+                });
+            } else {
+                map.addSource('temp-point', {
+                    type: 'geojson',
+                    data: {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: coordinates
+                        }
+                    }
+                });
+                
+                map.addLayer({
+                    id: 'temp-point',
+                    type: 'circle',
+                    source: 'temp-point',
+                    paint: {
+                        'circle-radius': 10,
+                        'circle-color': '#ff4444',
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+            }
+        }
+        
+        async function saveDataPointInternal() {
+            if (!selectedCoordinates || !currentUser || currentUser.type !== 'tecnico') {
+                showMessage('Por favor selecciona un punto en el mapa', 'error');
+                return;
+            }
+            
+            const sucsType = document.getElementById('sucsType').value;
+            const nivelFreatico = document.getElementById('nivelFreatico').value;
+            
+            if (!sucsType || !nivelFreatico) {
+                showMessage('Por favor completa todos los campos', 'error');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                const pointData = {
+                    geom: JSON.stringify({
+                        type: 'Point',
+                        coordinates: selectedCoordinates
+                    }),
+                    sucs_type: sucsType,
+                    nivel_freatico: parseFloat(nivelFreatico),
+                    fecha_creacion: new Date().toISOString(),
+                    usuario_creacion: currentUser.username
+                };
+                
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/puntos_datos`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(pointData)
+                });
+                
+                if (response.ok) {
+                    showMessage('Punto guardado exitosamente', 'success');
+                    
+                    // Limpiar formulario
+                    document.getElementById('sucsType').value = '';
+                    document.getElementById('nivelFreatico').value = '';
+                    document.getElementById('selectedCoords').innerHTML = '';
+                    selectedCoordinates = null;
+                    
+                    // Limpiar marcador temporal
+                    removeTemporaryMarker();
+                    
+                    // Recargar puntos
+                    await loadPuntosData();
+                } else {
+                    const errorData = await response.text();
+                    console.error('Error response:', errorData);
+                    showMessage('Error al guardar el punto: ' + response.status, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving point:', error);
+                showMessage('Error al guardar el punto: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function generateReportInternal() {
+            if (!currentUser || currentUser.type !== 'usuario') {
+                showMessage('Solo los usuarios pueden generar reportes', 'error');
+                return;
+            }
+            
+            try {
+                showLoading(true);
+                
+                // Obtener datos de puntos
+                const puntosData = await fetchFromSupabase('puntos_datos');
+                
+                // Crear contenido del reporte
+                let reportContent = `
+                    <div style="padding: 20px; font-family: Arial, sans-serif;">
+                        <h1>Reporte de Datos Geotécnicos - Azuay</h1>
+                        <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString()}</p>
+                        <p><strong>Usuario:</strong> ${currentUser.username}</p>
+                        <hr>
+                        
+                        <h2>Resumen de Puntos de Datos</h2>
+                        <p><strong>Total de puntos:</strong> ${puntosData.length}</p>
+                        
+                        <h3>Distribución por tipo de suelo (SUCS)</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                            <thead>
+                                <tr style="background-color: #f0f0f0;">
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Tipo SUCS</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Cantidad</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Porcentaje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                // Contar tipos de suelo
+                const sucsCount = {};
+                puntosData.forEach(punto => {
+                    const sucs = punto.sucs_type || 'No especificado';
+                    sucsCount[sucs] = (sucsCount[sucs] || 0) + 1;
+                });
+                
+                Object.entries(sucsCount).forEach(([sucs, count]) => {
+                    const percentage = ((count / puntosData.length) * 100).toFixed(1);
+                    reportContent += `
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${sucs}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${count}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${percentage}%</td>
+                        </tr>
+                    `;
+                });
+                
+                reportContent += `
+                            </tbody>
+                        </table>
+                        
+                        <h3>Detalles de Puntos</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                            <thead>
+                                <tr style="background-color: #f0f0f0;">
+                                    <th style="border: 1px solid #ddd; padding: 8px;">ID</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Tipo SUCS</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Nivel Freático (m)</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Fecha</th>
+                                    <th style="border: 1px solid #ddd; padding: 8px;">Usuario</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                puntosData.forEach(punto => {
+                    reportContent += `
+                        <tr>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${punto.id}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${punto.sucs_type || 'N/A'}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${punto.nivel_freatico || 'N/A'}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${new Date(punto.fecha_creacion).toLocaleDateString()}</td>
+                            <td style="border: 1px solid #ddd; padding: 8px;">${punto.usuario_creacion || 'N/A'}</td>
+                        </tr>
+                    `;
+                });
+                
+                reportContent += `
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                
+                // Abrir ventana con el reporte
+                const reportWindow = window.open('', '_blank');
+                reportWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Reporte Geotécnico - Azuay</title>
+                        <meta charset="UTF-8">
+                    </head>
+                    <body>
+                        ${reportContent}
+                        <div style="margin-top: 30px; text-align: center;">
+                            <button onclick="window.print()" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer;">Imprimir Reporte</button>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                reportWindow.document.close();
+                
+                showMessage('Reporte generado exitosamente', 'success');
+                
+            } catch (error) {
+                console.error('Error generando reporte:', error);
+                showMessage('Error al generar el reporte: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
             }
         }
         
@@ -1653,16 +1977,80 @@
             }, 5000);
         }
         
-        // Función para manejar errores de red
-        function handleNetworkError(error) {
-            console.error('Network error:', error);
-            if (error.message.includes('Failed to fetch')) {
-                showMessage('Error de conexión. Verifica tu conexión a internet.', 'error');
-            } else {
-                showMessage('Error de red: ' + error.message, 'error');
+        // Funciones de utilidad
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                if (show) {
+                    loading.classList.remove('hidden');
+                } else {
+                    loading.classList.add('hidden');
+                }
             }
         }
         
+        function showMessage(message, type) {
+            console.log(`${type === 'error' ? '❌' : '✅'} ${message}`);
+            
+            // Eliminar mensajes anteriores
+            const existingMessages = document.querySelectorAll('.error-message, .success-message');
+            existingMessages.forEach(msg => msg.remove());
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            
+            // Agregar al sidebar
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.insertBefore(messageDiv, sidebar.firstChild);
+                
+                // Eliminar después de 5 segundos
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 5000);
+            }
+        }
+        
+        function queryLayerFeatures(point) {
+            if (!map) return;
+            
+            try {
+                const features = map.queryRenderedFeatures(point);
+                
+                if (features.length > 0) {
+                    const layerInfo = features.map(feature => ({
+                        layer: feature.layer.id,
+                        properties: feature.properties
+                    }));
+                    
+                    // Mostrar información en el sidebar
+                    const infoDiv = document.getElementById('layerInfo');
+                    if (infoDiv) {
+                        let html = '<h4>Información del punto</h4>';
+                        
+                        layerInfo.forEach(info => {
+                            html += `<div style="margin-bottom: 15px; padding: 10px; background: #e2e8f0; border-radius: 5px;">
+                                    <h5>${info.layer}</h5>`;
+                            
+                            Object.entries(info.properties).forEach(([key, value]) => {
+                                if (value && value !== 'N/A') {
+                                    html += `<p style="margin: 2px 0; font-size: 0.9em;"><strong>${key}:</strong> ${value}</p>`;
+                                }
+                            });
+                            
+                            html += '</div>';
+                        });
+                        
+                        infoDiv.innerHTML = html;
+                    }
+                }
+            } catch (error) {
+                console.error('Error querying features:', error);
+            }
+        }
+        
+        console.log('✅ Todas las funciones cargadas correctamente');
     </script>
 </body>
 </html>
