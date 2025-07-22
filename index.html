@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <title>Geoportal de Suelos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8">
+  <title>Geoportal Azuay</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Bootstrap -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
   <style>
     html, body, #map {
       height: 100%;
@@ -20,9 +21,9 @@
       left: 10px;
       z-index: 1000;
       background: white;
-      padding: 12px;
+      padding: 10px;
       border-radius: 8px;
-      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
     }
     .hidden { display: none; }
   </style>
@@ -31,25 +32,13 @@
 
 <div id="map"></div>
 
-<!-- Panel de control -->
 <div class="control-panel">
-  <h6><strong>Rol</strong></h6>
-  <button class="btn btn-sm btn-secondary mb-2" onclick="modoUsuario()">Usuario</button>
-  <button class="btn btn-sm btn-warning mb-2" onclick="modoTecnico()">Técnico</button>
+  <h6><strong>Selecciona Rol</strong></h6>
+  <button class="btn btn-sm btn-secondary mb-1" onclick="modoUsuario()">Usuario</button>
+  <button class="btn btn-sm btn-warning mb-1" onclick="modoTecnico()">Técnico</button>
 
-  <div id="formularioTecnico" class="hidden">
-    <select class="form-select form-select-sm mt-2" id="tipoDato">
-      <option value="ll">Límite Líquido</option>
-      <option value="lp">Límite Plástico</option>
-      <option value="w">Contenido de humedad</option>
-      <option value="nf">Nivel Freático</option>
-      <option value="clasificacion">Clasificación de Suelo</option>
-    </select>
-    <button class="btn btn-sm btn-primary mt-2" onclick="cargarDatos()">Cargar Datos</button>
-  </div>
-
-  <div id="formularioUsuario" class="hidden">
-    <button class="btn btn-sm btn-success mt-2" onclick="descargarDatos()">Descargar Datos</button>
+  <div id="formularioTecnico" class="hidden mt-2">
+    <button class="btn btn-sm btn-success" onclick="activarCaptura()">Añadir Punto</button>
   </div>
 </div>
 
@@ -59,75 +48,64 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  const map = L.map('map').setView([-2.9, -78.99], 13);
-  const marcadores = [];
+  let modo = ''; // 'usuario' o 'tecnico'
+  const map = L.map('map').setView([-2.9, -78.99], 11); // Cuenca, Ecuador
 
-  // Mapa base con TU TOKEN
-  L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoic2VycGFkdXlhMTciLCJhIjoiY21kZTM1d3RhMGJjajJscHM0emIzYjVheCJ9.n9I1c8_WHPDSz7_pzU5rwA', {
-    tileSize: 512,
-    zoomOffset: -1,
-    attribution: '&copy; Mapbox'
+  // Mapa base
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
   }).addTo(map);
 
-  let modo = ''; // 'usuario' o 'tecnico'
-
+  // Función para cambiar de modo
   function modoUsuario() {
     modo = 'usuario';
     document.getElementById('formularioTecnico').classList.add('hidden');
-    document.getElementById('formularioUsuario').classList.remove('hidden');
-    alert('Modo usuario activado. Puedes ver e imprimir los datos.');
+    alert("Modo usuario activado: solo lectura.");
   }
 
   function modoTecnico() {
     modo = 'tecnico';
-    document.getElementById('formularioUsuario').classList.add('hidden');
     document.getElementById('formularioTecnico').classList.remove('hidden');
-    alert('Modo técnico activado. Puedes ingresar nuevos datos.');
+    alert("Modo técnico activado: puedes ingresar puntos.");
   }
 
-  function cargarDatos() {
-    if (modo !== 'tecnico') return;
-
-    map.once('click', function (e) {
-      const latlng = e.latlng;
-      const tipoDato = document.getElementById('tipoDato').value;
-      const valor = prompt(`Ingrese valor para ${tipoDato.toUpperCase()}:`);
-      if (valor !== null && valor.trim() !== '') {
-        const marcador = L.marker(latlng).addTo(map)
-          .bindPopup(`<b>${tipoDato.toUpperCase()}:</b> ${valor}<br><b>Ubicación:</b> ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`)
-          .openPopup();
-
-        marcadores.push({
-          tipo: tipoDato.toUpperCase(),
-          valor: valor,
-          lat: latlng.lat.toFixed(5),
-          lng: latlng.lng.toFixed(5)
-        });
-      }
+  // Cargar capa parroquias
+  fetch("parroquias_azuay.geojson")
+    .then(res => res.json())
+    .then(data => {
+      L.geoJSON(data, {
+        style: {
+          color: "#1f78b4",
+          weight: 1.5,
+          fillOpacity: 0.2
+        },
+        onEachFeature: function(feature, layer) {
+          const id = feature.properties.id;
+          layer.bindPopup(`<b>ID Parroquia:</b> ${id}`);
+        }
+      }).addTo(map);
     });
-    alert('Haz clic en el mapa para ubicar el dato.');
-  }
 
-  function descargarDatos() {
-    if (modo !== 'usuario') return;
-    if (marcadores.length === 0) {
-      alert("No hay datos para descargar.");
+  // Añadir punto como técnico
+  function activarCaptura() {
+    if (modo !== 'tecnico') {
+      alert("Solo técnicos pueden ingresar puntos.");
       return;
     }
 
-    let csv = "Tipo de Dato,Valor,Latitud,Longitud\n";
-    marcadores.forEach(m => {
-      csv += `${m.tipo},${m.valor},${m.lat},${m.lng}\n`;
+    map.once('click', function(e) {
+      const { lat, lng } = e.latlng;
+      const valor = prompt("Ingrese un valor para el punto:");
+      if (valor) {
+        L.marker([lat, lng])
+          .addTo(map)
+          .bindPopup(`<b>Valor:</b> ${valor}<br><b>Lat:</b> ${lat.toFixed(5)}<br><b>Lng:</b> ${lng.toFixed(5)}`)
+          .openPopup();
+      }
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "datos_geotecnicos.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    alert("Haz clic en el mapa para ingresar un punto.");
   }
 </script>
 
