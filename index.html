@@ -2,21 +2,40 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Geoportal Supabase</title>
+  <title>Geoportal con Reportes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
-  />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
   <style>
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
+    #map { height: 70vh; width: 100%; }
+    form { padding: 1em; background: #f9f9f9; }
+    input, select { display: block; margin-bottom: 1em; width: 100%; }
   </style>
 </head>
 <body>
+
   <div id="map"></div>
+
+  <form id="formulario">
+    <h3>Registrar nueva muestra de suelo</h3>
+    <label>Nombre:</label>
+    <input type="text" id="nombre" required />
+    
+    <label>Límite líquido (%):</label>
+    <input type="number" id="limite" step="0.1" required />
+    
+    <label>Clasificación del suelo:</label>
+    <select id="clasificacion">
+      <option value="Arcilla">Arcilla</option>
+      <option value="Arena">Arena</option>
+      <option value="Limo">Limo</option>
+      <option value="Grava">Grava</option>
+    </select>
+    
+    <label>Nivel freático (m):</label>
+    <input type="number" id="freatico" step="0.1" required />
+
+    <button type="submit">Guardar muestra</button>
+  </form>
 
   <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -25,32 +44,57 @@
     const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY'
     const supabase = supabase.createClient(supabaseUrl, supabaseKey)
 
-    const map = L.map('map').setView([-2.9, -79], 13)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(map)
+    let map = L.map('map').setView([-2.9, -79], 13)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map)
 
-    async function cargarDatos() {
-      const { data, error } = await supabase
-        .from('ubicaciones')
-        .select('*')
-
-      if (error) {
-        console.error('Error al obtener datos:', error)
-        return
-      }
-
-      data.forEach(punto => {
-        if (!punto.geom || !punto.geom.coordinates) return
-        const [lon, lat] = punto.geom.coordinates
-        L.marker([lat, lon])
-          .addTo(map)
-          .bindPopup(`<b>${punto.nombre}</b>`)
+    // Mostrar puntos existentes
+    async function cargarMuestras() {
+      const { data, error } = await supabase.from('muestras_suelo').select('*')
+      if (error) console.error(error)
+      data.forEach(p => {
+        const [lon, lat] = p.geom.coordinates
+        L.marker([lat, lon]).addTo(map).bindPopup(`
+          <b>${p.nombre}</b><br>
+          Límite líquido: ${p.limite_liquido}%<br>
+          Clasificación: ${p.clasificacion_suelo}<br>
+          Nivel freático: ${p.nivel_freatico} m
+        `)
       })
     }
 
-    cargarDatos()
-  </script>
-</body>
-</html>
+    cargarMuestras()
 
+    // Registrar nueva muestra
+    document.getElementById('formulario').addEventListener('submit', async (e) => {
+      e.preventDefault()
+
+      if (!navigator.geolocation) {
+        alert("La geolocalización no está disponible.")
+        return
+      }
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const lat = position.coords.latitude
+        const lon = position.coords.longitude
+
+        const nombre = document.getElementById('nombre').value
+        const limite = parseFloat(document.getElementById('limite').value)
+        const clasificacion = document.getElementById('clasificacion').value
+        const freatico = parseFloat(document.getElementById('freatico').value)
+
+        const { error } = await supabase.from('muestras_suelo').insert({
+          nombre,
+          limite_liquido: limite,
+          clasificacion_suelo: clasificacion,
+          nivel_freatico: freatico,
+          geom: {
+            type: 'Point',
+            coordinates: [lon, lat]
+          }
+        })
+
+        if (error) {
+          alert('Error al guardar: ' + error.message)
+        } else {
+          alert('Muestra registrada correctamente')
+          location.reload()
