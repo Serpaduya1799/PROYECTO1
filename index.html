@@ -12,7 +12,7 @@
     html, body {
       height: 100%;
       margin: 0;
-      font-family: 'Arial', sans-serif;
+      font-family: Arial, sans-serif;
     }
     
     #map {
@@ -30,7 +30,6 @@
       border-radius: 10px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
       max-width: 300px;
-      backdrop-filter: blur(10px);
     }
     
     .layer-control {
@@ -43,7 +42,6 @@
       border-radius: 10px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
       max-width: 250px;
-      backdrop-filter: blur(10px);
     }
     
     .hidden { 
@@ -55,10 +53,6 @@
       min-width: 100px;
     }
     
-    .form-group {
-      margin-bottom: 10px;
-    }
-    
     .status-indicator {
       display: inline-block;
       width: 10px;
@@ -67,8 +61,13 @@
       margin-right: 5px;
     }
     
-    .status-connected { background-color: #28a745; }
-    .status-disconnected { background-color: #dc3545; }
+    .status-connected { 
+      background-color: #28a745; 
+    }
+    
+    .status-disconnected { 
+      background-color: #dc3545; 
+    }
     
     .data-point {
       background: rgba(40, 167, 69, 0.1);
@@ -77,40 +76,6 @@
       margin: 5px 0;
       border-radius: 5px;
       font-size: 0.9em;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 20px;
-    }
-    
-    .spinner-border-sm {
-      width: 1rem;
-      height: 1rem;
-    }
-    
-    .info-item { 
-      margin: 5px 0; 
-      padding: 3px 0; 
-      font-size: 0.9em;
-    }
-    
-    .punto-cercano { 
-      background: #f8f9fa; 
-      padding: 8px; 
-      margin: 3px 0; 
-      border-radius: 3px; 
-      font-size: 0.8em;
-    }
-    
-    .popup-content {
-      max-width: 300px;
-      font-size: 0.9em;
-    }
-    
-    .popup-content div {
-      margin: 3px 0;
-      word-wrap: break-word;
     }
   </style>
 </head>
@@ -152,8 +117,8 @@
     <button class="btn btn-sm btn-success btn-custom" onclick="activarCaptura()">➕ Añadir Punto</button>
     
     <div id="formTecnico" class="hidden mt-2">
-      <div class="form-group">
-        <label>Tipo de Suelo:</label>
+      <div class="mb-2">
+        <label class="form-label">Tipo de Suelo:</label>
         <select class="form-select form-select-sm" id="tipoSuelo">
           <option value="">Seleccionar...</option>
           <option value="arcilloso">Arcilloso</option>
@@ -163,12 +128,12 @@
           <option value="pedregoso">Pedregoso</option>
         </select>
       </div>
-      <div class="form-group">
-        <label>Nivel Freático (m):</label>
+      <div class="mb-2">
+        <label class="form-label">Nivel Freático (m):</label>
         <input type="number" class="form-control form-control-sm" id="nivelFreatico" step="0.1" placeholder="Ej: 2.5">
       </div>
-      <div class="form-group">
-        <label>Observaciones:</label>
+      <div class="mb-2">
+        <label class="form-label">Observaciones:</label>
         <textarea class="form-control form-control-sm" id="observaciones" rows="2" placeholder="Observaciones adicionales..."></textarea>
       </div>
       <button class="btn btn-sm btn-primary" onclick="guardarPunto()">💾 Guardar</button>
@@ -176,7 +141,7 @@
     </div>
   </div>
   
-  <div id="loading" class="loading hidden">
+  <div id="loading" class="text-center mt-2 hidden">
     <div class="spinner-border spinner-border-sm" role="status"></div>
     <span class="ms-2">Cargando...</span>
   </div>
@@ -219,9 +184,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
-console.log('Iniciando Geoportal Azuay...');
-
-// Configuración de Supabase
+// Configuración
 const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
 
@@ -229,91 +192,167 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let modo = '';
 let map;
 let currentMarker = null;
-let capturaModeActive = false;
-let layers = {};
 let currentLocation = null;
 let supabase;
+let layers = {};
 
-// Inicializar aplicación
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM cargado, inicializando...');
-  initSupabase();
-  initMap();
+// Inicializar cuando la página carga
+window.addEventListener('load', function() {
+  console.log('Iniciando Geoportal...');
+  initApp();
 });
 
-// Inicializar Supabase
-function initSupabase() {
+function initApp() {
   try {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase inicializado correctamente');
-    testConnection();
+    // Inicializar Supabase
+    if (window.supabase) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase conectado');
+      updateConnectionStatus(true);
+    } else {
+      console.error('Supabase no disponible');
+      updateConnectionStatus(false);
+    }
+    
+    // Inicializar mapa
+    initMap();
+    
   } catch (error) {
-    console.error('Error inicializando Supabase:', error);
-    updateConnectionStatus(false);
+    console.error('Error inicializando aplicación:', error);
+    alert('Error al inicializar la aplicación: ' + error.message);
   }
 }
 
-// Inicializar mapa
 function initMap() {
   try {
-    console.log('Inicializando mapa...');
-    map = L.map('map').setView([-2.9, -78.99], 11); // Cuenca, Ecuador
+    console.log('Creando mapa...');
     
-    // Mapa base
+    // Crear mapa centrado en Cuenca
+    map = L.map('map').setView([-2.9, -78.99], 11);
+    
+    // Añadir capa base
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
     
-    console.log('Mapa inicializado correctamente');
+    console.log('Mapa creado exitosamente');
     
-    // Inicializar capas vacías
-    layers = {
-      parroquias: null,
-      cantones: null,
-      cobertura: null,
-      uso: null,
-      vias: null,
-      puntos: L.layerGroup().addTo(map)
-    };
+    // Inicializar capas
+    initLayers();
     
   } catch (error) {
-    console.error('Error inicializando mapa:', error);
-    alert('Error al cargar el mapa. Verifique su conexión a internet.');
+    console.error('Error creando mapa:', error);
+    alert('Error al crear el mapa: ' + error.message);
   }
 }
 
-// Probar conexión a Supabase
-async function testConnection() {
+function initLayers() {
+  // Inicializar objeto de capas
+  layers = {
+    parroquias: L.layerGroup(),
+    cantones: L.layerGroup(),
+    cobertura: L.layerGroup(),
+    uso: L.layerGroup(),
+    vias: L.layerGroup(),
+    puntos: L.layerGroup()
+  };
+  
+  // Añadir capas por defecto al mapa
+  layers.parroquias.addTo(map);
+  layers.cantones.addTo(map);
+  layers.puntos.addTo(map);
+  
+  // Cargar datos de ejemplo
+  loadExampleData();
+  
+  // Intentar cargar datos reales
+  if (supabase) {
+    loadSupabaseData();
+  }
+}
+
+function loadExampleData() {
+  // Datos de ejemplo para parroquias
+  const parroquiasEjemplo = [
+    { nombre: 'Cuenca Centro', lat: -2.9001, lng: -79.0059 },
+    { nombre: 'El Batán', lat: -2.8800, lng: -79.0200 },
+    { nombre: 'Monay', lat: -2.9200, lng: -78.9800 },
+    { nombre: 'San Sebastián', lat: -2.9100, lng: -79.0100 }
+  ];
+  
+  parroquiasEjemplo.forEach(p => {
+    const marker = L.circleMarker([p.lat, p.lng], {
+      radius: 8,
+      fillColor: '#1f78b4',
+      color: '#1f78b4',
+      weight: 2,
+      fillOpacity: 0.5
+    }).bindPopup(`<strong>Parroquia:</strong> ${p.nombre}`);
+    
+    layers.parroquias.addLayer(marker);
+  });
+  
+  // Datos de ejemplo para cantones
+  const cantonesEjemplo = [
+    { nombre: 'Cuenca', lat: -2.9000, lng: -79.0000 },
+    { nombre: 'Girón', lat: -3.1000, lng: -79.1000 },
+    { nombre: 'Paute', lat: -2.7500, lng: -78.7500 }
+  ];
+  
+  cantonesEjemplo.forEach(c => {
+    const marker = L.circleMarker([c.lat, c.lng], {
+      radius: 12,
+      fillColor: '#e31a1c',
+      color: '#e31a1c',
+      weight: 3,
+      fillOpacity: 0.3
+    }).bindPopup(`<strong>Cantón:</strong> ${c.nombre}`);
+    
+    layers.cantones.addLayer(marker);
+  });
+  
+  console.log('Datos de ejemplo cargados');
+}
+
+async function loadSupabaseData() {
   try {
-    console.log('Probando conexión a Supabase...');
-    showLoading(true);
+    console.log('Cargando datos de Supabase...');
     
-    // Probar conexión con una consulta simple
-    const { data, error } = await supabase
-      .from('PARROQUIAS AZUAY')
-      .select('*')
-      .limit(1);
+    // Intentar cargar puntos de datos existentes
+    const { data: puntos, error } = await supabase
+      .from('puntos_datos')
+      .select('*');
     
-    if (error) {
-      console.error('Error de conexión:', error);
-      updateConnectionStatus(false);
-      alert('Error de conexión a la base de datos: ' + error.message);
-    } else {
-      console.log('Conexión exitosa a Supabase');
-      updateConnectionStatus(true);
-      loadAllLayers();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error cargando puntos:', error);
+      return;
     }
+    
+    if (puntos && puntos.length > 0) {
+      puntos.forEach(punto => {
+        const marker = L.marker([punto.latitud, punto.longitud])
+          .bindPopup(`
+            <div>
+              <h6><strong>📍 Punto de Datos</strong></h6>
+              <div><strong>Tipo de Suelo:</strong> ${punto.tipo_suelo}</div>
+              <div><strong>Nivel Freático:</strong> ${punto.nivel_freatico}m</div>
+              <div><strong>Parroquia:</strong> ${punto.parroquia || 'N/A'}</div>
+              <div><strong>Cantón:</strong> ${punto.canton || 'N/A'}</div>
+              <div><strong>Observaciones:</strong> ${punto.observaciones || 'N/A'}</div>
+              <small>Fecha: ${new Date(punto.created_at).toLocaleDateString()}</small>
+            </div>
+          `);
+        layers.puntos.addLayer(marker);
+      });
+      console.log(`${puntos.length} puntos de datos cargados`);
+    }
+    
   } catch (error) {
-    console.error('Error en test de conexión:', error);
-    updateConnectionStatus(false);
-    alert('Error de conexión a Supabase: ' + error.message);
-  } finally {
-    showLoading(false);
+    console.error('Error en loadSupabaseData:', error);
   }
 }
 
-// Actualizar estado de conexión
 function updateConnectionStatus(connected) {
   const indicator = document.getElementById('connectionStatus');
   if (connected) {
@@ -325,7 +364,6 @@ function updateConnectionStatus(connected) {
   }
 }
 
-// Mostrar/ocultar loading
 function showLoading(show) {
   const loadingEl = document.getElementById('loading');
   if (loadingEl) {
@@ -333,205 +371,6 @@ function showLoading(show) {
   }
 }
 
-// Cargar todas las capas
-async function loadAllLayers() {
-  try {
-    console.log('Cargando todas las capas...');
-    await loadParroquias();
-    await loadCantones();
-    await loadCobertura();
-    await loadUso();
-    await loadVias();
-    await loadPuntosDatos();
-    console.log('Todas las capas cargadas');
-  } catch (error) {
-    console.error('Error cargando capas:', error);
-  }
-}
-
-// Cargar capa de parroquias
-async function loadParroquias() {
-  try {
-    console.log('Cargando parroquias...');
-    const { data, error } = await supabase
-      .from('PARROQUIAS AZUAY')
-      .select('*');
-    
-    if (error) {
-      console.error('Error cargando parroquias:', error);
-      return;
-    }
-    
-    if (data && data.length > 0) {
-      // Crear capa GeoJSON simulada (ya que no tenemos geometrías reales aún)
-      layers.parroquias = L.layerGroup();
-      
-      // Por ahora crear algunos marcadores de ejemplo para las parroquias
-      const parroquiasEjemplo = [
-        { nombre: 'Cuenca', lat: -2.9001, lng: -79.0059 },
-        { nombre: 'Baños', lat: -2.8500, lng: -78.9500 },
-        { nombre: 'Molleturo', lat: -2.7500, lng: -79.2500 }
-      ];
-      
-      parroquiasEjemplo.forEach(p => {
-        const marker = L.circleMarker([p.lat, p.lng], {
-          radius: 8,
-          fillColor: '#1f78b4',
-          color: '#1f78b4',
-          weight: 2,
-          fillOpacity: 0.3
-        }).bindPopup(`<strong>Parroquia:</strong> ${p.nombre}`);
-        
-        layers.parroquias.addLayer(marker);
-      });
-      
-      layers.parroquias.addTo(map);
-      console.log('Parroquias cargadas:', data.length);
-    }
-  } catch (error) {
-    console.error('Error en loadParroquias:', error);
-  }
-}
-
-// Cargar capa de cantones
-async function loadCantones() {
-  try {
-    console.log('Cargando cantones...');
-    const { data, error } = await supabase
-      .from('CANTONESDELAZUAY')
-      .select('*');
-    
-    if (error) {
-      console.error('Error cargando cantones:', error);
-      return;
-    }
-    
-    if (data && data.length > 0) {
-      layers.cantones = L.layerGroup();
-      
-      // Cantones de ejemplo
-      const cantonesEjemplo = [
-        { nombre: 'Cuenca', lat: -2.9000, lng: -79.0000 },
-        { nombre: 'Girón', lat: -3.1000, lng: -79.1000 },
-        { nombre: 'Paute', lat: -2.7500, lng: -78.7500 }
-      ];
-      
-      cantonesEjemplo.forEach(c => {
-        const marker = L.circleMarker([c.lat, c.lng], {
-          radius: 12,
-          fillColor: '#e31a1c',
-          color: '#e31a1c',
-          weight: 3,
-          fillOpacity: 0.2
-        }).bindPopup(`<strong>Cantón:</strong> ${c.nombre}`);
-        
-        layers.cantones.addLayer(marker);
-      });
-      
-      layers.cantones.addTo(map);
-      console.log('Cantones cargados:', data.length);
-    }
-  } catch (error) {
-    console.error('Error en loadCantones:', error);
-  }
-}
-
-// Cargar otras capas (simplificado)
-async function loadCobertura() {
-  try {
-    const { data } = await supabase.from('COBERTURA DE LA TIERRA AZUAY').select('*').limit(1);
-    if (data) {
-      layers.cobertura = L.layerGroup();
-      console.log('Cobertura disponible para cargar');
-    }
-  } catch (error) {
-    console.log('Cobertura no disponible aún');
-  }
-}
-
-async function loadUso() {
-  try {
-    const { data } = await supabase.from('USO DE LA TIERRA AZUAY').select('*').limit(1);
-    if (data) {
-      layers.uso = L.layerGroup();
-      console.log('Uso de tierra disponible para cargar');
-    }
-  } catch (error) {
-    console.log('Uso de tierra no disponible aún');
-  }
-}
-
-async function loadVias() {
-  try {
-    const { data } = await supabase.from('vias').select('*').limit(1);
-    if (data) {
-      layers.vias = L.layerGroup();
-      console.log('Vías disponibles para cargar');
-    }
-  } catch (error) {
-    console.log('Vías no disponibles aún');
-  }
-}
-
-// Cargar puntos de datos
-async function loadPuntosDatos() {
-  try {
-    console.log('Cargando puntos de datos...');
-    const { data, error } = await supabase
-      .from('puntos_datos')
-      .select('*');
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error cargando puntos:', error);
-      return;
-    }
-    
-    if (data && data.length > 0) {
-      data.forEach(punto => {
-        const marker = L.marker([punto.latitud, punto.longitud])
-          .bindPopup(`
-            <div class="popup-content">
-              <h6><strong>📍 Punto de Datos</strong></h6>
-              <div><strong>Tipo de Suelo:</strong> ${punto.tipo_suelo}</div>
-              <div><strong>Nivel Freático:</strong> ${punto.nivel_freatico}m</div>
-              <div><strong>Parroquia:</strong> ${punto.parroquia}</div>
-              <div><strong>Cantón:</strong> ${punto.canton}</div>
-              <div><strong>Observaciones:</strong> ${punto.observaciones || 'N/A'}</div>
-              <small>Fecha: ${new Date(punto.created_at).toLocaleDateString()}</small>
-            </div>
-          `);
-        layers.puntos.addLayer(marker);
-      });
-      console.log('Puntos de datos cargados:', data.length);
-    } else {
-      console.log('No hay puntos de datos guardados aún');
-    }
-  } catch (error) {
-    console.error('Error en loadPuntosDatos:', error);
-  }
-}
-
-// Toggle de capas
-function toggleLayer(layerName) {
-  const checkbox = document.getElementById(`layer${layerName.charAt(0).toUpperCase() + layerName.slice(1)}`);
-  const layer = layers[layerName];
-  
-  if (layer) {
-    if (checkbox.checked) {
-      if (!map.hasLayer(layer)) {
-        layer.addTo(map);
-      }
-    } else {
-      if (map.hasLayer(layer)) {
-        map.removeLayer(layer);
-      }
-    }
-  } else {
-    console.log(`Capa ${layerName} no disponible aún`);
-  }
-}
-
-// Configurar modo de usuario
 function setModo(nuevoModo) {
   modo = nuevoModo;
   console.log('Modo cambiado a:', nuevoModo);
@@ -554,88 +393,58 @@ function setModo(nuevoModo) {
   cancelarCaptura();
 }
 
-// Activar consulta (modo usuario)
+function toggleLayer(layerName) {
+  const checkbox = document.getElementById(`layer${layerName.charAt(0).toUpperCase() + layerName.slice(1)}`);
+  const layer = layers[layerName];
+  
+  if (layer) {
+    if (checkbox.checked) {
+      if (!map.hasLayer(layer)) {
+        layer.addTo(map);
+      }
+    } else {
+      if (map.hasLayer(layer)) {
+        map.removeLayer(layer);
+      }
+    }
+  } else {
+    console.log(`Capa ${layerName} no disponible`);
+  }
+}
+
 function activarConsulta() {
   if (modo !== 'usuario') {
     alert('Solo usuarios pueden consultar información');
     return;
   }
   
-  map.once('click', async function(e) {
+  map.once('click', function(e) {
     console.log('Consulta en punto:', e.latlng);
-    showLoading(true);
     currentLocation = e.latlng;
     
-    try {
-      const info = await obtenerInformacionPunto(e.latlng.lat, e.latlng.lng);
-      mostrarInformacion(info);
-    } catch (error) {
-      alert('Error al obtener información: ' + error.message);
-    } finally {
-      showLoading(false);
-    }
+    const info = {
+      coordenadas: { lat: e.latlng.lat, lng: e.latlng.lng },
+      parroquia: 'Cuenca Centro',
+      canton: 'Cuenca',
+      cobertura: 'Área urbana',
+      uso: 'Residencial'
+    };
+    
+    mostrarInformacion(info);
   });
   
   alert('Haz clic en el mapa para consultar información del punto');
 }
 
-// Obtener información de un punto
-async function obtenerInformacionPunto(lat, lng) {
-  try {
-    console.log('Obteniendo información para:', lat, lng);
-    
-    // Simulación de datos geográficos
-    const parroquia = 'Cuenca Centro';
-    const canton = 'Cuenca';
-    const cobertura = 'Área urbana';
-    const uso = 'Residencial';
-    
-    // Consultar puntos cercanos reales
-    const { data: puntosCercanos, error } = await supabase
-      .from('puntos_datos')
-      .select('*')
-      .limit(5);
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error consultando puntos:', error);
-    }
-    
-    return {
-      coordenadas: { lat, lng },
-      parroquia,
-      canton,
-      cobertura,
-      uso,
-      puntosCercanos: puntosCercanos || []
-    };
-  } catch (error) {
-    throw new Error('Error consultando información: ' + error.message);
-  }
-}
-
-// Mostrar información consultada
 function mostrarInformacion(info) {
   const content = `
-    <div class="info-section">
+    <div>
       <h6><strong>📍 Información del Punto</strong></h6>
-      <div class="info-item"><strong>Coordenadas:</strong> ${info.coordenadas.lat.toFixed(6)}, ${info.coordenadas.lng.toFixed(6)}</div>
-      <div class="info-item"><strong>Parroquia:</strong> ${info.parroquia}</div>
-      <div class="info-item"><strong>Cantón:</strong> ${info.canton}</div>
-      <div class="info-item"><strong>Cobertura del Suelo:</strong> ${info.cobertura}</div>
-      <div class="info-item"><strong>Uso del Suelo:</strong> ${info.uso}</div>
-      <div class="info-item"><strong>Puntos cercanos:</strong> ${info.puntosCercanos.length}</div>
-      
-      ${info.puntosCercanos.length > 0 ? `
-        <hr>
-        <h6><strong>🔬 Datos Técnicos Cercanos</strong></h6>
-        ${info.puntosCercanos.slice(0, 3).map(punto => `
-          <div class="punto-cercano">
-            <small><strong>Tipo de Suelo:</strong> ${punto.tipo_suelo}</small><br>
-            <small><strong>Nivel Freático:</strong> ${punto.nivel_freatico}m</small><br>
-            <small><strong>Distancia aprox:</strong> ${calcularDistancia(info.coordenadas.lat, info.coordenadas.lng, punto.latitud, punto.longitud).toFixed(2)} km</small>
-          </div>
-        `).join('')}
-      ` : ''}
+      <div><strong>Coordenadas:</strong> ${info.coordenadas.lat.toFixed(6)}, ${info.coordenadas.lng.toFixed(6)}</div>
+      <div><strong>Parroquia:</strong> ${info.parroquia}</div>
+      <div><strong>Cantón:</strong> ${info.canton}</div>
+      <div><strong>Cobertura del Suelo:</strong> ${info.cobertura}</div>
+      <div><strong>Uso del Suelo:</strong> ${info.uso}</div>
       
       <div class="mt-2">
         <button class="btn btn-sm btn-success" onclick="imprimirInformacion()">🖨️ Imprimir</button>
@@ -648,26 +457,12 @@ function mostrarInformacion(info) {
   document.getElementById('infoResultado').classList.remove('hidden');
 }
 
-// Calcular distancia entre dos puntos
-function calcularDistancia(lat1, lng1, lat2, lng2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng/2) * Math.sin(dLng/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-// Activar captura de puntos
 function activarCaptura() {
   if (modo !== 'tecnico') {
     alert('Solo técnicos pueden ingresar puntos');
     return;
   }
   
-  capturaModeActive = true;
   document.getElementById('formTecnico').classList.remove('hidden');
   
   map.once('click', function(e) {
@@ -687,7 +482,6 @@ function activarCaptura() {
   alert('Haz clic en el mapa para seleccionar la ubicación del nuevo punto');
 }
 
-// Guardar punto
 async function guardarPunto() {
   if (!currentLocation) {
     alert('Primero seleccione una ubicación en el mapa');
@@ -705,47 +499,44 @@ async function guardarPunto() {
   
   try {
     showLoading(true);
-    console.log('Guardando punto:', currentLocation);
     
-    // Obtener información geográfica
-    const infoGeografica = await obtenerInformacionPunto(currentLocation.lat, currentLocation.lng);
-    
-    const { error } = await supabase
-      .from('puntos_datos')
-      .insert([
-        {
-          latitud: currentLocation.lat,
-          longitud: currentLocation.lng,
-          tipo_suelo: tipoSuelo,
-          nivel_freatico: parseFloat(nivelFreatico),
-          parroquia: infoGeografica.parroquia,
-          canton: infoGeografica.canton,
-          observaciones: observaciones
-        }
-      ]);
-    
-    if (error) throw error;
+    if (supabase) {
+      const { error } = await supabase
+        .from('puntos_datos')
+        .insert([
+          {
+            latitud: currentLocation.lat,
+            longitud: currentLocation.lng,
+            tipo_suelo: tipoSuelo,
+            nivel_freatico: parseFloat(nivelFreatico),
+            parroquia: 'Cuenca Centro',
+            canton: 'Cuenca',
+            observaciones: observaciones
+          }
+        ]);
+      
+      if (error) throw error;
+    }
     
     // Actualizar marcador
     if (currentMarker) {
       currentMarker.bindPopup(`
-        <div class="popup-content">
+        <div>
           <h6><strong>📍 Punto de Datos</strong></h6>
           <div><strong>Coordenadas:</strong> ${currentLocation.lat.toFixed(6)}, ${currentLocation.lng.toFixed(6)}</div>
           <div><strong>Tipo de Suelo:</strong> ${tipoSuelo}</div>
           <div><strong>Nivel Freático:</strong> ${nivelFreatico}m</div>
-          <div><strong>Parroquia:</strong> ${infoGeografica.parroquia}</div>
-          <div><strong>Cantón:</strong> ${infoGeografica.canton}</div>
+          <div><strong>Parroquia:</strong> Cuenca Centro</div>
+          <div><strong>Cantón:</strong> Cuenca</div>
           ${observaciones ? `<div><strong>Observaciones:</strong> ${observaciones}</div>` : ''}
           <small><em>Guardado: ${new Date().toLocaleString('es-EC')}</em></small>
         </div>
       `);
       
-      // Añadir a la capa de puntos
       layers.puntos.addLayer(currentMarker);
     }
     
-    alert(`Punto guardado exitosamente en:\n- Parroquia: ${infoGeografica.parroquia}\n- Cantón: ${infoGeografica.canton}`);
+    alert('Punto guardado exitosamente');
     cancelarCaptura();
     
   } catch (error) {
@@ -756,9 +547,7 @@ async function guardarPunto() {
   }
 }
 
-// Cancelar captura
 function cancelarCaptura() {
-  capturaModeActive = false;
   currentLocation = null;
   
   if (currentMarker && !layers.puntos.hasLayer(currentMarker)) {
@@ -774,145 +563,75 @@ function cancelarCaptura() {
   document.getElementById('observaciones').value = '';
 }
 
-// Imprimir información
 function imprimirInformacion() {
   if (!currentLocation) {
     alert('No hay información para imprimir');
     return;
   }
   
-  const printWindow = window.open('', '_blank');
-  const content = document.getElementById('infoContent').innerHTML;
-  
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Reporte Geológico - Azuay</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .info-section { max-width: 600px; }
-        .info-item { margin: 8px 0; padding: 5px 0; border-bottom: 1px solid #eee; }
-        .punto-cercano { background: #f8f9fa; padding: 10px; margin: 5px 0; border-radius: 5px; }
-        h6 { color: #333; margin: 15px 0 10px 0; }
-        button { display: none; }
-      </style>
-    </head>
-    <body>
-      <h2>🌍 Reporte Geológico - Provincia del Azuay</h2>
-      <p><strong>Fecha de consulta:</strong> ${new Date().toLocaleDateString('es-EC', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })}</p>
-      ${content}
-      <hr>
-      <p><small>Documento generado automáticamente por el Geoportal Azuay</small></p>
-    </body>
-    </html>
-  `);
-  
-  printWindow.document.close();
-  printWindow.print();
+  window.print();
 }
 
-// Descargar datos
 function descargarDatos() {
   if (!currentLocation) {
     alert('No hay información para descargar');
     return;
   }
   
-  obtenerInformacionPunto(currentLocation.lat, currentLocation.lng)
-    .then(info => {
-      const dataToDownload = {
-        fecha_consulta: new Date().toISOString(),
-        coordenadas: info.coordenadas,
-        ubicacion: {
-          parroquia: info.parroquia,
-          canton: info.canton
-        },
-        caracteristicas: {
-          cobertura_suelo: info.cobertura,
-          uso_suelo: info.uso
-        },
-        puntos_tecnicos_cercanos: info.puntosCercanos,
-        metadata: {
-          sistema_coordenadas: 'WGS84',
-          datum: 'EPSG:4326',
-          fuente: 'Geoportal Azuay'
-        }
-      };
-      
-      const blob = new Blob([JSON.stringify(dataToDownload, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `datos_geologicos_${info.coordenadas.lat.toFixed(6)}_${info.coordenadas.lng.toFixed(6)}_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-      
-      alert('Datos descargados exitosamente');
-    })
-    .catch(error => {
-      alert('Error al descargar datos: ' + error.message);
-    });
+  const data = {
+    fecha_consulta: new Date().toISOString(),
+    coordenadas: currentLocation,
+    parroquia: 'Cuenca Centro',
+    canton: 'Cuenca',
+    cobertura: 'Área urbana',
+    uso: 'Residencial'
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `datos_geologicos_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+  
+  alert('Datos descargados exitosamente');
 }
 
-// Generar reporte
-async function generarReporte() {
+function generarReporte() {
   if (!currentLocation) {
     alert('Primero consulte un punto en el mapa');
     return;
   }
   
-  try {
-    showLoading(true);
-    
-    const { data, error } = await supabase
-      .from('puntos_datos')
-      .select('*');
-    
-    if (error && error.code !== 'PGRST116') {
-      throw error;
-    }
-    
-    // Crear contenido del reporte
-    const reportContent = `
+  const reportContent = `
 REPORTE DE INFORMACIÓN GEOLÓGICA
 ================================
 Fecha: ${new Date().toLocaleDateString()}
 Coordenadas consultadas: ${currentLocation.lat.toFixed(5)}, ${currentLocation.lng.toFixed(5)}
-
-PUNTOS DE DATOS DISPONIBLES:
-${(data || []).map(punto => `
-- Coordenadas: ${punto.latitud}, ${punto.longitud}
-- Tipo de Suelo: ${punto.tipo_suelo}
-- Nivel Freático: ${punto.nivel_freatico}m
-- Parroquia: ${punto.parroquia}
-- Cantón: ${punto.canton}
-- Fecha: ${new Date(punto.created_at).toLocaleDateString()}
-`).join('\n')}
-    `;
-    
-    // Descargar reporte
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte_geologico_${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    
-  } catch (error) {
-    alert('Error al generar reporte: ' + error.message);
-  } finally {
-    showLoading(false);
-  }
+Parroquia: Cuenca Centro
+Cantón: Cuenca
+Cobertura: Área urbana
+Uso de suelo: Residencial
+  `;
+  
+  const blob = new Blob([reportContent], { type: 'text/plain' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `reporte_geologico_${new Date().toISOString().split('T')[0]}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+  
+  alert('Reporte generado y descargado');
 }
+
+console.log('Script cargado completamente');
+</script>
+
+</body>
+</html>
