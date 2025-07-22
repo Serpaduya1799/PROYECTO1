@@ -1,121 +1,56 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geo portal UTPL</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 600px;
-            width: 90%;
-            backdrop-filter: blur(10px);
-        }
-        
-        h1 {
-            color: #2c3e50;
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        .subtitle {
-            color: #7f8c8d;
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .geo-icon {
-            font-size: 4rem;
-            color: #3498db;
-            margin-bottom: 1rem;
-            display: block;
-        }
-        
-        .description {
-            color: #34495e;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-        }
-        
-        .button {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 25px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-        
-        .button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
-        }
-        
-        .footer {
-            margin-top: 2rem;
-            color: #95a5a6;
-            font-size: 0.9rem;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Geoportal Supabase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+  />
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="geo-icon">🌍</div>
-        <h1>Geo portal UTPL</h1>
-        <div class="subtitle">Sistema de Información Geográfica</div>
-        
-        <div class="description">
-            Portal geográfico de la Universidad Técnica Particular de Loja para la exploración y análisis de datos espaciales y cartográficos.
-        </div>
-        
-        <button class="button" onclick="showMessage()">Explorar Portal</button>
-        
-        <div class="footer">
-            Universidad Técnica Particular de Loja - 2025
-        </div>
-    </div>
+  <div id="map"></div>
 
-    <script>
-        function showMessage() {
-            alert('¡Bienvenido al Geo portal UTPL!\n\nAquí podrás acceder a mapas interactivos, datos geográficos y herramientas de análisis espacial.');
-        }
-        
-        // Añadir efecto de entrada suave
-        window.addEventListener('load', function() {
-            const container = document.querySelector('.container');
-            container.style.opacity = '0';
-            container.style.transform = 'translateY(30px)';
-            container.style.transition = 'all 0.8s ease';
-            
-            setTimeout(() => {
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-            }, 100);
-        });
-    </script>
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabaseUrl = 'https://xgywnwvvrtfoltkcxfgc.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY'
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey)
+
+    const map = L.map('map').setView([-2.9, -79], 13)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(map)
+
+    async function cargarDatos() {
+      const { data, error } = await supabase
+        .from('ubicaciones')
+        .select('*')
+
+      if (error) {
+        console.error('Error al obtener datos:', error)
+        return
+      }
+
+      data.forEach(punto => {
+        if (!punto.geom || !punto.geom.coordinates) return
+        const [lon, lat] = punto.geom.coordinates
+        L.marker([lat, lon])
+          .addTo(map)
+          .bindPopup(`<b>${punto.nombre}</b>`)
+      })
+    }
+
+    cargarDatos()
+  </script>
 </body>
 </html>
+
