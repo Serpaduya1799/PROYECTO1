@@ -3,10 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Geoportal Azuay</title>
+    <title>Geoportal Azuay - Técnico</title>
     <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
     <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -16,19 +15,19 @@
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             height: 100vh;
             overflow: hidden;
+            background: #f5f5f5;
         }
         
         .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background: #2563eb;
+            color: white;
             padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             z-index: 1000;
             position: relative;
         }
@@ -36,7 +35,6 @@
         .logo {
             font-size: 1.5rem;
             font-weight: bold;
-            color: #2d3748;
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -47,39 +45,13 @@
             font-size: 1.8rem;
         }
         
-        .user-controls {
+        .user-info {
             display: flex;
+            align-items: center;
             gap: 1rem;
-            align-items: center;
-        }
-        
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
+            background: rgba(255,255,255,0.1);
+            padding: 0.5rem 1rem;
             border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: rgba(102, 126, 234, 0.1);
-            color: #667eea;
-            border: 2px solid #667eea;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         
         .main-container {
@@ -88,12 +60,12 @@
         }
         
         .sidebar {
-            width: 350px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            width: 300px;
+            background: white;
             padding: 1.5rem;
             overflow-y: auto;
-            border-right: 1px solid rgba(0,0,0,0.1);
+            border-right: 1px solid #e5e7eb;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05);
         }
         
         .map-container {
@@ -106,136 +78,108 @@
             height: 100%;
         }
         
-        .login-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            width: 400px;
-            max-width: 90vw;
-        }
-        
-        .modal-header {
-            text-align: center;
+        .section {
             margin-bottom: 2rem;
-        }
-        
-        .modal-header h2 {
-            color: #2d3748;
-            margin-bottom: 0.5rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #4a5568;
-            font-weight: 600;
-        }
-        
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e2e8f0;
+            padding: 1rem;
+            background: #f8fafc;
             border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
+            border: 1px solid #e5e7eb;
         }
         
-        .form-group input:focus, .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .layer-control {
-            margin-bottom: 2rem;
-        }
-        
-        .layer-control h3 {
-            color: #2d3748;
+        .section h3 {
+            color: #1f2937;
             margin-bottom: 1rem;
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-        }
-        
-        .layer-control h3::before {
-            content: "🗂️";
         }
         
         .layer-item {
             display: flex;
             align-items: center;
             gap: 0.75rem;
-            padding: 0.75rem;
+            padding: 0.5rem;
             margin-bottom: 0.5rem;
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 8px;
-            transition: background-color 0.3s ease;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s ease;
         }
         
         .layer-item:hover {
-            background: rgba(102, 126, 234, 0.1);
+            background: #f3f4f6;
+            border-color: #2563eb;
         }
         
         .layer-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #667eea;
+            width: 16px;
+            height: 16px;
+            accent-color: #2563eb;
         }
         
         .layer-item label {
             flex: 1;
             font-weight: 500;
-            color: #4a5568;
+            color: #374151;
             cursor: pointer;
-        }
-        
-        .data-section {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 2px solid #e2e8f0;
-        }
-        
-        .data-section h3 {
-            color: #2d3748;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .data-section h3::before {
-            content: "📊";
-        }
-        
-        .data-table {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 1rem;
-            max-height: 300px;
-            overflow-y: auto;
             font-size: 0.9rem;
         }
         
-        .hidden {
-            display: none;
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: border-color 0.2s ease;
+        }
+        
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .coordinates-display {
@@ -247,27 +191,37 @@
             padding: 0.5rem 1rem;
             border-radius: 6px;
             font-family: monospace;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         
-        .technical-form {
-            background: #f8fafc;
-            padding: 1.5rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-        }
-        
-        .sucs-select {
-            width: 100%;
+        .selected-coords {
+            background: #dbeafe;
+            border: 1px solid #2563eb;
             padding: 0.75rem;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            border-radius: 6px;
             margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: #1e40af;
         }
         
-        .mapboxgl-popup-content {
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        .message {
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
         }
         
         .loading {
@@ -280,13 +234,14 @@
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             z-index: 3000;
+            display: none;
         }
         
         .spinner {
             width: 40px;
             height: 40px;
             border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border-top: 4px solid #2563eb;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1rem;
@@ -296,58 +251,21 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        
-        .error-message {
-            background: #fed7d7;
-            color: #c53030;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-        
-        .success-message {
-            background: #c6f6d5;
-            color: #2f855a;
-            padding: 1rem;
-            border-radius: 8px;
-            margin: 1rem 0;
-        }
-
-        .layer-stats {
-            background: #e2e8f0;
-            border-radius: 6px;
-            padding: 8px;
-            margin: 5px 0;
-            font-size: 0.85em;
-        }
-
-        .category-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 3px 0;
-            border-bottom: 1px solid #cbd5e0;
-        }
-
-        .category-item:last-child {
-            border-bottom: none;
-        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo">Geoportal Azuay</div>
-        <div class="user-controls">
-            <span id="userDisplay" class="hidden"></span>
-            <button class="btn btn-secondary" onclick="showLogin('usuario')">👤 Usuario</button>
-            <button class="btn btn-primary" onclick="showLogin('tecnico')">🔧 Técnico</button>
-            <button class="btn btn-secondary hidden" id="logoutBtn" onclick="logout()">Cerrar Sesión</button>
+        <div class="user-info">
+            <span>🔧 Modo Técnico</span>
         </div>
     </div>
 
     <div class="main-container">
         <div class="sidebar">
-            <div class="layer-control">
-                <h3>Capas Disponibles</h3>
+            <!-- Capas Disponibles -->
+            <div class="section">
+                <h3>🗂️ Capas Disponibles</h3>
                 <div class="layer-item">
                     <input type="checkbox" id="cobertura" onchange="toggleLayer('cobertura')">
                     <label for="cobertura">Cobertura de la Tierra</label>
@@ -374,49 +292,63 @@
                 </div>
             </div>
 
-            <div id="technicalControls" class="hidden">
-                <div class="technical-form">
-                    <h4>📍 Agregar Punto de Datos</h4>
-                    <p style="margin-bottom: 1rem; color: #666;">Haz clic en el mapa para seleccionar un punto</p>
-                    <div id="selectedCoords" style="margin-bottom: 1rem; font-size: 0.9rem; color: #666;"></div>
-                    <div class="form-group">
-                        <label>Clasificación SUCS:</label>
-                        <select id="sucsType" class="sucs-select">
-                            <option value="">Seleccionar tipo de suelo</option>
-                            <option value="GW">GW - Grava bien graduada</option>
-                            <option value="GP">GP - Grava mal graduada</option>
-                            <option value="GM">GM - Grava limosa</option>
-                            <option value="GC">GC - Grava arcillosa</option>
-                            <option value="SW">SW - Arena bien graduada</option>
-                            <option value="SP">SP - Arena mal graduada</option>
-                            <option value="SM">SM - Arena limosa</option>
-                            <option value="SC">SC - Arena arcillosa</option>
-                            <option value="ML">ML - Limo de baja plasticidad</option>
-                            <option value="CL">CL - Arcilla de baja plasticidad</option>
-                            <option value="OL">OL - Limo orgánico</option>
-                            <option value="MH">MH - Limo de alta plasticidad</option>
-                            <option value="CH">CH - Arcilla de alta plasticidad</option>
-                            <option value="OH">OH - Arcilla orgánica</option>
-                            <option value="PT">PT - Turba</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Nivel Freático (m):</label>
-                        <input type="number" id="nivelFreatico" step="0.1" placeholder="Ej: 2.5">
-                    </div>
-                    <button class="btn btn-primary" onclick="saveDataPoint()" style="width: 100%;">💾 Guardar Punto</button>
-                </div>
-            </div>
-
-            <div class="data-section">
-                <h3>Información de Capas</h3>
-                <div id="layerInfo" class="data-table">
-                    <p style="color: #666;">Haz clic en una capa para ver su información</p>
+            <!-- Agregar Punto de Datos -->
+            <div class="section">
+                <h3>📍 Agregar Punto de Datos</h3>
+                
+                <div id="message" class="message"></div>
+                
+                <p style="margin-bottom: 1rem; color: #6b7280; font-size: 0.9rem;">
+                    Haz clic en el mapa para seleccionar un punto
+                </p>
+                
+                <div id="selectedCoords" class="selected-coords" style="display: none;"></div>
+                
+                <div class="form-group">
+                    <label>Clasificación SUCS:</label>
+                    <select id="sucsType">
+                        <option value="">Seleccionar tipo de suelo</option>
+                        <option value="GW">GW - Grava bien graduada</option>
+                        <option value="GP">GP - Grava mal graduada</option>
+                        <option value="GM">GM - Grava limosa</option>
+                        <option value="GC">GC - Grava arcillosa</option>
+                        <option value="SW">SW - Arena bien graduada</option>
+                        <option value="SP">SP - Arena mal graduada</option>
+                        <option value="SM">SM - Arena limosa</option>
+                        <option value="SC">SC - Arena arcillosa</option>
+                        <option value="ML">ML - Limo de baja plasticidad</option>
+                        <option value="CL">CL - Arcilla de baja plasticidad</option>
+                        <option value="OL">OL - Limo orgánico</option>
+                        <option value="MH">MH - Limo de alta plasticidad</option>
+                        <option value="CH">CH - Arcilla de alta plasticidad</option>
+                        <option value="OH">OH - Arcilla orgánica</option>
+                        <option value="PT">PT - Turba</option>
+                    </select>
                 </div>
                 
-                <div id="userControls" class="hidden" style="margin-top: 1rem;">
-                    <button class="btn btn-primary" onclick="generateReport()" style="width: 100%;">📄 Generar Reporte</button>
+                <div class="form-group">
+                    <label>Nivel Freático (m):</label>
+                    <input type="number" id="nivelFreatico" step="0.1" placeholder="Ej: 2.5">
                 </div>
+                
+                <div class="form-group">
+                    <label>Radio del Estrato (m):</label>
+                    <select id="radioEstrato">
+                        <option value="50">50 metros</option>
+                        <option value="100" selected>100 metros</option>
+                        <option value="150">150 metros</option>
+                        <option value="200">200 metros</option>
+                        <option value="250">250 metros</option>
+                        <option value="500">500 metros</option>
+                    </select>
+                    <small style="color: #6b7280; font-size: 0.8rem; display: block; margin-top: 0.25rem;">
+                        Define el área de influencia del punto de datos
+                    </small>
+                </div>
+                
+                <button class="btn" onclick="saveDataPoint()" id="saveBtn" disabled>
+                    💾 Guardar Punto con Estrato
+                </button>
             </div>
         </div>
 
@@ -428,485 +360,124 @@
         </div>
     </div>
 
-    <!-- Modal de Login -->
-    <div id="loginModal" class="login-modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Iniciar Sesión</h2>
-                <p id="modalSubtitle"></p>
-            </div>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">Usuario:</label>
-                    <input type="text" id="username" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Contraseña:</label>
-                    <input type="password" id="password" required>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem;">Ingresar</button>
-                <button type="button" class="btn btn-secondary" onclick="closeLogin()" style="width: 100%;">Cancelar</button>
-            </form>
-        </div>
-    </div>
-
-    <div id="loading" class="loading hidden">
+    <div id="loading" class="loading">
         <div class="spinner"></div>
         <p>Cargando datos...</p>
     </div>
 
     <script>
-        console.log('🚀 Iniciando Geoportal Azuay - Versión Corregida...');
+        console.log('🚀 Iniciando Geoportal Azuay - Versión Simplificada...');
         
-        // Configuración corregida
+        // Configuración
         const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2VycGFkdXlhMTciLCJhIjoiY21kZTM1d3RhMGJjajJscHM0emIzYjVheCJ9.n9I1c8_WHPDSz7_pzU5rwA';
         const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
         
         // Estado global
         let map = null;
-        let currentUser = null;
         let selectedCoordinates = null;
-        let loadedLayers = {};
         
         // Configurar Mapbox
-        if (typeof mapboxgl !== 'undefined') {
-            mapboxgl.accessToken = MAPBOX_TOKEN;
-            console.log('✅ Mapbox configurado correctamente');
-        } else {
-            console.error('❌ Mapbox GL JS no está disponible');
-        }
-
-        // CONFIGURACIÓN CORREGIDA DE CAPAS
-        const LAYER_CONFIG = {
+        mapboxgl.accessToken = MAPBOX_TOKEN;
+        
+        // Configuración de capas simplificada
+        const LAYERS = {
             'cobertura': {
                 table: 'COBERTURA DE LA TIERRA AZUAY',
-                color: '#46a049',
-                type: 'fill',
-                selectFields: 'id,geom,descr,niv1,niv2,niv3,uso,cbt,DPA_DESCAN',
-                displayName: 'Cobertura de la Tierra',
-                infoTemplate: (props) => `
-                    <div style="padding: 15px; min-width: 300px; max-width: 400px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2d3748; border-bottom: 2px solid #46a049; padding-bottom: 5px;">
-                            🌿 Cobertura de la Tierra
-                        </h4>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Descripción:</strong><br>
-                            <span style="color: #2d3748;">${props.descr || 'Sin descripción'}</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                            <div>
-                                <strong style="color: #4a5568;">Nivel 1:</strong><br>
-                                <span style="color: #2d3748; font-size: 0.9em;">${props.niv1 || 'N/A'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: #4a5568;">Nivel 2:</strong><br>
-                                <span style="color: #2d3748; font-size: 0.9em;">${props.niv2 || 'N/A'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: #4a5568;">Nivel 3:</strong><br>
-                                <span style="color: #2d3748; font-size: 0.9em;">${props.niv3 || 'N/A'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: #4a5568;">Uso:</strong><br>
-                                <span style="color: #2d3748; font-size: 0.9em;">${props.uso || 'N/A'}</span>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Cobertura:</strong> 
-                            <span style="color: #2d3748;">${props.cbt || 'N/A'}</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="color: #4a5568;">Cantón:</strong> 
-                            <span style="color: #2d3748;">${props.DPA_DESCAN || 'N/A'}</span>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #718096;">ID: ${props.id}</div>
-                    </div>
-                `
+                color: '#22c55e',
+                type: 'fill'
             },
             'uso-tierra': {
                 table: 'USO DE LA TIERRA AZUAY',
-                color: '#f4a261',
-                type: 'fill',
-                selectFields: 'id,geom,descr,cag_desc,pen_desc,lmt,DPA_DESCAN',
-                displayName: 'Uso de la Tierra',
-                infoTemplate: (props) => `
-                    <div style="padding: 15px; min-width: 300px; max-width: 400px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2d3748; border-bottom: 2px solid #f4a261; padding-bottom: 5px;">
-                            🏞️ Uso de la Tierra
-                        </h4>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Descripción:</strong><br>
-                            <span style="color: #2d3748;">${props.descr || 'Sin descripción'}</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                            <div>
-                                <strong style="color: #4a5568;">Categoría:</strong><br>
-                                <span style="color: #2d3748; font-size: 0.9em;">${props.cag_desc || 'N/A'}</span>
-                            </div>
-                            <div>
-                                <strong style="color: #4a5568;">Pendiente:</strong><br>
-                                <span style="color: #2d3748; font-size: 0.9em;">${props.pen_desc || 'N/A'}</span>
-                            </div>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Limitación:</strong> 
-                            <span style="color: #2d3748;">${props.lmt || 'N/A'}</span>
-                        </div>
-                        <div style="margin-bottom: 5px;">
-                            <strong style="color: #4a5568;">Cantón:</strong> 
-                            <span style="color: #2d3748;">${props.DPA_DESCAN || 'N/A'}</span>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #718096;">ID: ${props.id}</div>
-                    </div>
-                `
+                color: '#f59e0b',
+                type: 'fill'
             },
             'cantones': {
                 table: 'CANTONESDELAZUAY',
-                color: '#e76f51',
-                type: 'line',
-                selectFields: 'id,geom,DPA_DESCAN,DPA_DESPRO',
-                displayName: 'Cantones del Azuay',
-                infoTemplate: (props) => `
-                    <div style="padding: 15px; min-width: 250px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2d3748; border-bottom: 2px solid #e76f51; padding-bottom: 5px;">
-                            🏛️ Cantón del Azuay
-                        </h4>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Cantón:</strong><br>
-                            <span style="color: #2d3748; font-size: 1.1em;">${props.DPA_DESCAN || 'Sin nombre'}</span>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Provincia:</strong><br>
-                            <span style="color: #2d3748;">${props.DPA_DESPRO || 'N/A'}</span>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #718096;">ID: ${props.id}</div>
-                    </div>
-                `
+                color: '#ef4444',
+                type: 'line'
             },
             'parroquias': {
                 table: 'PARROQUIAS AZUAY',
-                color: '#264653',
-                type: 'line',
-                selectFields: 'id,geom,DPA_DESPAR,DPA_DESCAN,DPA_DESPRO',
-                displayName: 'Parroquias del Azuay',
-                infoTemplate: (props) => `
-                    <div style="padding: 15px; min-width: 250px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2d3748; border-bottom: 2px solid #264653; padding-bottom: 5px;">
-                            🏘️ Parroquia del Azuay
-                        </h4>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Parroquia:</strong><br>
-                            <span style="color: #2d3748; font-size: 1.1em;">${props.DPA_DESPAR || 'Sin nombre'}</span>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Cantón:</strong><br>
-                            <span style="color: #2d3748;">${props.DPA_DESCAN || 'N/A'}</span>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Provincia:</strong><br>
-                            <span style="color: #2d3748;">${props.DPA_DESPRO || 'N/A'}</span>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #718096;">ID: ${props.id}</div>
-                    </div>
-                `
+                color: '#3b82f6',
+                type: 'line'
             },
             'vias': {
                 table: 'vias',
-                color: '#2a9d8f',
-                type: 'line',
-                selectFields: 'id,geom,nombre,tipo,estado',
-                displayName: 'Vías',
-                infoTemplate: (props) => `
-                    <div style="padding: 15px; min-width: 250px;">
-                        <h4 style="margin: 0 0 15px 0; color: #2d3748; border-bottom: 2px solid #2a9d8f; padding-bottom: 5px;">
-                            🛣️ Información de Vía
-                        </h4>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Nombre:</strong><br>
-                            <span style="color: #2d3748;">${props.nombre || 'Sin nombre'}</span>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Tipo:</strong><br>
-                            <span style="color: #2d3748;">${props.tipo || 'N/A'}</span>
-                        </div>
-                        <div style="margin-bottom: 10px;">
-                            <strong style="color: #4a5568;">Estado:</strong><br>
-                            <span style="color: #2d3748;">${props.estado || 'N/A'}</span>
-                        </div>
-                        <div style="margin-top: 10px; font-size: 0.8em; color: #718096;">ID: ${props.id}</div>
-                    </div>
-                `
+                color: '#8b5cf6',
+                type: 'line'
             }
         };
-    </script>
 
-    <script>
-        // FUNCIONES GLOBALES CORREGIDAS
-        
+        // Funciones principales
         function toggleLayer(layerId) {
-            console.log('🔄 toggleLayer called:', layerId);
             const checkbox = document.getElementById(layerId);
-            
-            if (!checkbox) {
-                console.error('❌ Checkbox no encontrado:', layerId);
-                return;
-            }
-            
             if (checkbox.checked) {
-                console.log('✅ Cargando capa:', layerId);
                 loadLayer(layerId);
             } else {
-                console.log('❌ Removiendo capa:', layerId);
                 removeLayer(layerId);
             }
         }
-        
-        function showLogin(type) {
-            console.log('🔑 showLogin called:', type);
-            const modal = document.getElementById('loginModal');
-            const title = document.getElementById('modalTitle');
-            const subtitle = document.getElementById('modalSubtitle');
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
             
-            if (!modal || !title || !subtitle) {
-                console.error('❌ Elementos del modal no encontrados');
-                return;
-            }
-            
-            if (type === 'usuario') {
-                title.textContent = 'Acceso de Usuario';
-                subtitle.textContent = 'Visualización y descarga de datos';
-            } else {
-                title.textContent = 'Acceso Técnico';
-                subtitle.textContent = 'Ingreso de datos al sistema';
-            }
-            
-            modal.classList.remove('hidden');
-            modal.dataset.userType = type;
-        }
-        
-        function closeLogin() {
-            console.log('❌ Cerrando login');
-            const modal = document.getElementById('loginModal');
-            const form = document.getElementById('loginForm');
-            
-            if (modal) modal.classList.add('hidden');
-            if (form) form.reset();
-        }
-        
-        function logout() {
-            console.log('🚪 Logout called');
-            currentUser = null;
-            selectedCoordinates = null;
-            
-            const elements = {
-                userDisplay: document.getElementById('userDisplay'),
-                logoutBtn: document.getElementById('logoutBtn'),
-                technicalControls: document.getElementById('technicalControls'),
-                userControls: document.getElementById('userControls'),
-                selectedCoords: document.getElementById('selectedCoords')
-            };
-            
-            if (elements.userDisplay) elements.userDisplay.classList.add('hidden');
-            if (elements.logoutBtn) elements.logoutBtn.classList.add('hidden');
-            if (elements.technicalControls) elements.technicalControls.classList.add('hidden');
-            if (elements.userControls) elements.userControls.classList.add('hidden');
-            if (elements.selectedCoords) elements.selectedCoords.innerHTML = '';
-            
-            removeTemporaryMarker();
-            showMessage('Sesión cerrada', 'success');
-        }
-        
-        function saveDataPoint() {
-            console.log('💾 saveDataPoint called');
-            saveDataPointInternal();
-        }
-        
-        function generateReport() {
-            console.log('📄 generateReport called');
-            generateReportInternal();
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
         }
 
-        // FUNCIONES DE UTILIDAD MEJORADAS
-        
         function showLoading(show) {
             const loading = document.getElementById('loading');
-            if (loading) {
-                if (show) {
-                    loading.classList.remove('hidden');
-                } else {
-                    loading.classList.add('hidden');
-                }
-            }
-        }
-        
-        function showMessage(message, type) {
-            console.log(`${type === 'error' ? '❌' : '✅'} ${message}`);
-            
-            // Eliminar mensajes anteriores
-            const existingMessages = document.querySelectorAll('.error-message, .success-message');
-            existingMessages.forEach(msg => msg.remove());
-            
-            const messageDiv = document.createElement('div');
-            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
-            messageDiv.textContent = message;
-            
-            // Agregar al sidebar
-            const sidebar = document.querySelector('.sidebar');
-            if (sidebar) {
-                sidebar.insertBefore(messageDiv, sidebar.firstChild);
-                
-                // Eliminar después de 5 segundos
-                setTimeout(() => {
-                    if (messageDiv.parentNode) {
-                        messageDiv.remove();
-                    }
-                }, 5000);
-            }
+            loading.style.display = show ? 'block' : 'none';
         }
 
-        // FUNCIÓN MEJORADA PARA FETCH DE SUPABASE
-        async function fetchFromSupabase(table, selectFields = '*', limit = 100) {
-            try {
-                console.log(`🌐 Consultando tabla: ${table}`);
-                console.log(`📊 Campos solicitados: ${selectFields}`);
+        // Función para crear buffer circular
+        function createCircleBuffer(center, radiusInMeters) {
+            const points = 64;
+            const coords = [];
+            const earthRadius = 6378137; // Radio de la Tierra en metros
+            
+            for (let i = 0; i < points; i++) {
+                const angle = (i * 360) / points;
+                const angleRad = (angle * Math.PI) / 180;
                 
-                // Nombres exactos de las tablas según la base de datos
-                const tableNames = {
-                    'COBERTURA DE LA TIERRA AZUAY': 'COBERTURA%20DE%20LA%20TIERRA%20AZUAY',
-                    'USO DE LA TIERRA AZUAY': 'USO%20DE%20LA%20TIERRA%20AZUAY',
-                    'CANTONESDELAZUAY': 'CANTONESDELAZUAY',
-                    'PARROQUIAS AZUAY': 'PARROQUIAS%20AZUAY',
-                    'vias': 'vias',
-                    'puntos_datos': 'puntos_datos'
-                };
+                // Calcular offset en metros
+                const dx = radiusInMeters * Math.cos(angleRad);
+                const dy = radiusInMeters * Math.sin(angleRad);
                 
-                const encodedTable = tableNames[table] || encodeURIComponent(table);
+                // Convertir a grados
+                const deltaLat = dy / earthRadius * (180 / Math.PI);
+                const deltaLng = dx / (earthRadius * Math.cos(center[1] * Math.PI / 180)) * (180 / Math.PI);
                 
-                // Primero, verificar qué columnas existen en la tabla
-                let url = `${SUPABASE_URL}/rest/v1/${encodedTable}?select=${encodeURIComponent(selectFields)}`;
-                if (limit) {
-                    url += `&limit=${limit}`;
-                }
-                
-                console.log(`🔗 URL de consulta: ${url.substring(0, 100)}...`);
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'apikey': SUPABASE_KEY,
-                        'Authorization': `Bearer ${SUPABASE_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Error response:', response.status, errorText);
-                    
-                    // Intentar con campos básicos si hay error 400
-                    if (response.status === 400 && selectFields !== 'id,geom') {
-                        console.log('🔄 Reintentando con campos básicos...');
-                        return await fetchFromSupabase(table, 'id,geom', limit);
-                    }
-                    
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                const data = await response.json();
-                console.log(`✅ Datos recibidos: ${data.length} registros de ${table}`);
-                return data;
-                
-            } catch (error) {
-                console.error('❌ Error en fetchFromSupabase:', error);
-                throw error;
+                coords.push([
+                    center[0] + deltaLng,
+                    center[1] + deltaLat
+                ]);
             }
+            
+            // Cerrar el polígono
+            coords.push(coords[0]);
+            
+            return {
+                type: 'Polygon',
+                coordinates: [coords]
+            };
         }
 
-        // FUNCIÓN MEJORADA PARA PARSEAR GEOMETRÍAS
-        function parseGeometry(geomData) {
-            if (!geomData) return null;
-            
-            try {
-                let geometry;
-                
-                if (typeof geomData === 'string') {
-                    // Si empieza con formato WKT
-                    if (geomData.startsWith('POLYGON') || geomData.startsWith('MULTIPOLYGON') || 
-                        geomData.startsWith('LINESTRING') || geomData.startsWith('POINT')) {
-                        console.warn('⚠️ Geometría en formato WKT detectada, requiere conversión');
-                        return null;
-                    } else if (geomData.startsWith('{')) {
-                        geometry = JSON.parse(geomData);
-                    } else {
-                        return null;
-                    }
-                } else if (typeof geomData === 'object') {
-                    geometry = geomData;
-                } else {
-                    return null;
-                }
-                
-                // Validar estructura GeoJSON
-                if (!geometry.type || !geometry.coordinates) {
-                    console.warn('⚠️ Geometría sin estructura GeoJSON válida');
-                    return null;
-                }
-                
-                return geometry;
-            } catch (error) {
-                console.warn('⚠️ Error parseando geometría:', error);
-                return null;
-            }
-        }
-
-        function removeLayer(layerId) {
-            if (!map) {
-                console.warn('⚠️ Mapa no disponible para remover capa');
-                return;
-            }
-            
-            const layersToRemove = [layerId, layerId + '-outline', layerId + '-labels'];
-            
-            layersToRemove.forEach(layer => {
-                try {
-                    if (map.getLayer && map.getLayer(layer)) {
-                        map.removeLayer(layer);
-                        console.log('🗑️ Capa removida:', layer);
-                    }
-                } catch (error) {
-                    console.warn('⚠️ Error removiendo capa:', layer, error);
-                }
-            });
-            
-            try {
-                if (map.getSource && map.getSource(layerId)) {
-                    map.removeSource(layerId);
-                    console.log('🗑️ Fuente removida:', layerId);
-                }
-            } catch (error) {
-                console.warn('⚠️ Error removiendo fuente:', layerId, error);
-            }
-        }
-        
-        function removeTemporaryMarker() {
-            if (map && map.getLayer) {
-                try {
-                    if (map.getLayer('temp-point')) {
-                        map.removeLayer('temp-point');
-                        map.removeSource('temp-point');
-                        console.log('🗑️ Marcador temporal removido');
-                    }
-                } catch (error) {
-                    console.warn('⚠️ Error removiendo marcador temporal:', error);
-                }
-            }
-        }
-        
         function addTemporaryMarker(coordinates) {
-            if (!map || !coordinates) return;
+            if (!map) return;
             
             try {
+                const radio = parseInt(document.getElementById('radioEstrato').value);
+                
+                // Crear buffer circular
+                const bufferGeometry = createCircleBuffer(coordinates, radio);
+                
+                // Datos para el punto
                 const pointData = {
                     type: 'Feature',
                     geometry: {
@@ -915,187 +486,129 @@
                     }
                 };
                 
-                if (map.getSource && map.getSource('temp-point')) {
-                    map.getSource('temp-point').setData(pointData);
-                } else {
-                    map.addSource('temp-point', {
-                        type: 'geojson',
-                        data: pointData
-                    });
-                    
-                    map.addLayer({
-                        id: 'temp-point',
-                        type: 'circle',
-                        source: 'temp-point',
-                        paint: {
-                            'circle-radius': 10,
-                            'circle-color': '#ff4444',
-                            'circle-stroke-width': 3,
-                            'circle-stroke-color': '#ffffff'
-                        }
-                    });
-                }
-                console.log('📍 Marcador temporal agregado:', coordinates);
+                // Datos para el buffer
+                const bufferData = {
+                    type: 'Feature',
+                    geometry: bufferGeometry
+                };
+                
+                // Remover marcadores anteriores
+                removeTemporaryMarker();
+                
+                // Agregar buffer
+                map.addSource('temp-buffer', {
+                    type: 'geojson',
+                    data: bufferData
+                });
+                
+                map.addLayer({
+                    id: 'temp-buffer',
+                    type: 'fill',
+                    source: 'temp-buffer',
+                    paint: {
+                        'fill-color': '#2563eb',
+                        'fill-opacity': 0.2
+                    }
+                });
+                
+                map.addLayer({
+                    id: 'temp-buffer-outline',
+                    type: 'line',
+                    source: 'temp-buffer',
+                    paint: {
+                        'line-color': '#2563eb',
+                        'line-width': 2,
+                        'line-dasharray': [2, 2]
+                    }
+                });
+                
+                // Agregar punto central
+                map.addSource('temp-point', {
+                    type: 'geojson',
+                    data: pointData
+                });
+                
+                map.addLayer({
+                    id: 'temp-point',
+                    type: 'circle',
+                    source: 'temp-point',
+                    paint: {
+                        'circle-radius': 8,
+                        'circle-color': '#dc2626',
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+                
+                console.log(`📍 Marcador con buffer de ${radio}m agregado:`, coordinates);
             } catch (error) {
                 console.error('❌ Error agregando marcador temporal:', error);
             }
         }
 
-        console.log('✅ Funciones globales definidas correctamente');
-    </script>
-    
-    <script>
-        // INICIALIZACIÓN Y FUNCIONES PRINCIPALES MEJORADAS
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 DOM loaded, verificando dependencias...');
+        function removeTemporaryMarker() {
+            if (!map) return;
             
-            // Verificar que Mapbox GL JS esté cargado
-            if (typeof mapboxgl === 'undefined') {
-                console.error('❌ Mapbox GL JS no está cargado');
-                showMessage('Error: Mapbox GL JS no se pudo cargar', 'error');
-                return;
-            }
+            const layers = ['temp-point', 'temp-buffer', 'temp-buffer-outline'];
+            const sources = ['temp-point', 'temp-buffer'];
             
-            console.log('🗺️ Mapbox GL JS version:', mapboxgl.version);
+            layers.forEach(layerId => {
+                if (map.getLayer && map.getLayer(layerId)) {
+                    map.removeLayer(layerId);
+                }
+            });
             
-            // Configurar eventos de formulario
-            setupEventListeners();
-            
-            // Inicializar mapa con un pequeño delay
-            setTimeout(() => {
-                initMap();
-            }, 100);
-        });
-        
-        function setupEventListeners() {
-            console.log('🔗 Configurando event listeners...');
-            
-            // Login form
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    
-                    const modal = document.getElementById('loginModal');
-                    const userType = modal ? modal.dataset.userType : null;
-                    const username = document.getElementById('username').value;
-                    
-                    if (!userType) {
-                        showMessage('Error: Tipo de usuario no definido', 'error');
-                        return;
-                    }
-                    
-                    // Validación simple
-                    if (username.length < 3) {
-                        showMessage('El usuario debe tener al menos 3 caracteres', 'error');
-                        return;
-                    }
-                    
-                    currentUser = {
-                        type: userType,
-                        username: username
-                    };
-                    
-                    console.log('👤 Usuario logueado:', currentUser);
-                    
-                    // Actualizar UI
-                    const userDisplay = document.getElementById('userDisplay');
-                    const logoutBtn = document.getElementById('logoutBtn');
-                    
-                    if (userDisplay) {
-                        userDisplay.textContent = `${username} (${userType})`;
-                        userDisplay.classList.remove('hidden');
-                    }
-                    
-                    if (logoutBtn) {
-                        logoutBtn.classList.remove('hidden');
-                    }
-                    
-                    if (userType === 'tecnico') {
-                        const technicalControls = document.getElementById('technicalControls');
-                        if (technicalControls) technicalControls.classList.remove('hidden');
-                    } else {
-                        const userControls = document.getElementById('userControls');
-                        if (userControls) userControls.classList.remove('hidden');
-                    }
-                    
-                    closeLogin();
-                    showMessage(`¡Bienvenido ${username}!`, 'success');
-                });
-                
-                console.log('✅ Event listener del login configurado');
-            } else {
-                console.warn('⚠️ Formulario de login no encontrado');
-            }
+            sources.forEach(sourceId => {
+                if (map.getSource && map.getSource(sourceId)) {
+                    map.removeSource(sourceId);
+                }
+            });
         }
-        
+
+        // Actualizar buffer cuando cambie el radio
+        document.getElementById('radioEstrato').addEventListener('change', function() {
+            if (selectedCoordinates) {
+                addTemporaryMarker(selectedCoordinates);
+                
+                const radio = this.value;
+                const coordsDiv = document.getElementById('selectedCoords');
+                if (coordsDiv) {
+                    coordsDiv.innerHTML = `
+                        <strong>📍 Punto seleccionado:</strong><br>
+                        Lat: ${selectedCoordinates[1].toFixed(6)}<br>
+                        Lng: ${selectedCoordinates[0].toFixed(6)}<br>
+                        <strong>🔵 Radio del estrato:</strong> ${radio} metros
+                    `;
+                }
+            }
+        });
+
+        // Inicialización del mapa
+        document.addEventListener('DOMContentLoaded', function() {
+            initMap();
+        });
+
         function initMap() {
             try {
-                console.log('🗺️ Inicializando mapa...');
-                
-                const mapContainer = document.getElementById('map');
-                if (!mapContainer) {
-                    throw new Error('Contenedor del mapa no encontrado');
-                }
-                
                 map = new mapboxgl.Map({
                     container: 'map',
-                    style: 'mapbox://styles/mapbox/streets-v12',
-                    center: [-79.0059, -2.9001], // Cuenca, Ecuador
+                    style: 'mapbox://styles/mapbox/satellite-streets-v12',
+                    center: [-79.0059, -2.9001],
                     zoom: 10,
                     maxZoom: 18,
-                    minZoom: 8,
-                    attributionControl: true,
-                    logoPosition: 'bottom-left'
+                    minZoom: 8
                 });
-                
-                console.log('🎯 Objeto mapa creado');
-                
-                // Eventos del mapa
+
                 map.on('load', () => {
                     console.log('🎉 Mapa cargado correctamente');
                     showMessage('Mapa cargado correctamente', 'success');
-                    
-                    // Cambiar a vista satelital después de cargar
-                    setTimeout(() => {
-                        if (map.isStyleLoaded()) {
-                            map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
-                            console.log('🛰️ Cambiado a vista satelital');
-                        }
-                    }, 2000);
-                    
-                    // Cargar puntos de datos
                     loadPuntosData();
+                    
+                    // Agregar controles
+                    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+                    map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
                 });
-                
-                map.on('error', (e) => {
-                    console.error('❌ Error en el mapa:', e);
-                    if (e.error && e.error.message) {
-                        if (e.error.message.includes('401') || e.error.message.includes('Unauthorized')) {
-                            showMessage('Error: Token de Mapbox inválido', 'error');
-                        } else if (e.error.message.includes('rate limit')) {
-                            showMessage('Error: Límite de uso de Mapbox excedido', 'error');
-                        } else {
-                            showMessage('Error del mapa: ' + e.error.message, 'error');
-                        }
-                    } else {
-                        showMessage('Error desconocido del mapa', 'error');
-                    }
-                });
-                
-                // Agregar controles después de un delay
-                setTimeout(() => {
-                    try {
-                        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-                        map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
-                        map.addControl(new mapboxgl.ScaleControl(), 'bottom-right');
-                        console.log('🎛️ Controles agregados');
-                    } catch (controlError) {
-                        console.error('❌ Error agregando controles:', controlError);
-                    }
-                }, 1000);
-                
+
                 // Mostrar coordenadas en tiempo real
                 map.on('mousemove', (e) => {
                     const coordsElement = document.getElementById('coordinates');
@@ -1104,498 +617,61 @@
                             `Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}`;
                     }
                 });
-                
-                // Click en el mapa
+
+                // Click en el mapa para seleccionar punto
                 map.on('click', (e) => {
-                    console.log('🖱️ Click en mapa:', e.lngLat);
+                    selectedCoordinates = [e.lngLat.lng, e.lngLat.lat];
+                    const radio = document.getElementById('radioEstrato').value;
                     
-                    if (currentUser && currentUser.type === 'tecnico') {
-                        selectedCoordinates = [e.lngLat.lng, e.lngLat.lat];
-                        
-                        const coordsElement = document.getElementById('selectedCoords');
-                        if (coordsElement) {
-                            coordsElement.innerHTML = 
-                                `<strong>Punto seleccionado:</strong><br>Lat: ${e.lngLat.lat.toFixed(6)}<br>Lng: ${e.lngLat.lng.toFixed(6)}`;
-                        }
-                        
-                        removeTemporaryMarker();
-                        addTemporaryMarker(selectedCoordinates);
-                    } else if (currentUser && currentUser.type === 'usuario') {
-                        queryLayerFeatures(e.point);
-                    }
+                    const coordsDiv = document.getElementById('selectedCoords');
+                    coordsDiv.innerHTML = `
+                        <strong>📍 Punto seleccionado:</strong><br>
+                        Lat: ${e.lngLat.lat.toFixed(6)}<br>
+                        Lng: ${e.lngLat.lng.toFixed(6)}<br>
+                        <strong>🔵 Radio del estrato:</strong> ${radio} metros
+                    `;
+                    coordsDiv.style.display = 'block';
+                    
+                    addTemporaryMarker(selectedCoordinates);
+                    updateSaveButton();
                 });
-                
-                console.log('✅ Mapa inicializado correctamente');
-                
-            } catch (error) {
-                console.error('💥 Error crítico inicializando el mapa:', error);
-                showMessage('Error crítico al inicializar el mapa: ' + error.message, 'error');
-            }
-        }
 
-        // FUNCIÓN MEJORADA PARA CARGAR CAPAS
-        async function loadLayer(layerId) {
-            console.log('🔄 Cargando capa:', layerId);
-            showLoading(true);
-            
-            const config = LAYER_CONFIG[layerId];
-            if (!config) {
-                showMessage(`❌ Configuración no encontrada para capa: ${layerId}`, 'error');
-                showLoading(false);
-                return;
-            }
-            
-            try {
-                showMessage(`Cargando capa ${config.displayName}...`, 'success');
-                
-                console.log(`📊 Consultando ${config.table} con campos: ${config.selectFields}`);
-                
-                // Usar límite pequeño para prueba inicial
-                const data = await fetchFromSupabase(config.table, config.selectFields, 30);
-                console.log(`📈 Datos recibidos para ${layerId}:`, data?.length || 0, 'registros');
-                
-                if (!data || data.length === 0) {
-                    showMessage(`❌ No se encontraron datos para la capa "${config.displayName}"`, 'error');
-                    const checkbox = document.getElementById(layerId);
-                    if (checkbox) checkbox.checked = false;
-                    return;
-                }
-                
-                // Procesar geometrías
-                const features = [];
-                let processedCount = 0;
-                let errorCount = 0;
-                
-                for (let item of data) {
-                    try {
-                        if (!item.geom) {
-                            console.warn(`⚠️ Item ${item.id} sin geometría`);
-                            continue;
-                        }
-                        
-                        const geometry = parseGeometry(item.geom);
-                        if (!geometry) {
-                            errorCount++;
-                            continue;
-                        }
-                        
-                        features.push({
-                            type: 'Feature',
-                            geometry: geometry,
-                            properties: item
-                        });
-                        
-                        processedCount++;
-                        
-                    } catch (parseError) {
-                        console.warn(`⚠️ Error procesando item ${item.id}:`, parseError);
-                        errorCount++;
-                    }
-                }
-                
-                if (features.length > 0) {
-                    const geojson = {
-                        type: 'FeatureCollection',
-                        features: features
-                    };
-                    
-                    await addLayerToMap(layerId, geojson, config);
-                    showLayerInfo(layerId, features, config);
-                    
-                    let message = `✅ Capa "${config.displayName}" cargada: ${features.length} elementos`;
-                    if (errorCount > 0) {
-                        message += ` (${errorCount} errores)`;
-                    }
-                    showMessage(message, 'success');
-                } else {
-                    showMessage(`❌ No se pudieron procesar geometrías válidas para "${config.displayName}"`, 'error');
-                    const checkbox = document.getElementById(layerId);
-                    if (checkbox) checkbox.checked = false;
-                }
-                
-            } catch (error) {
-                console.error('❌ Error loading layer:', error);
-                let errorMessage = 'Error al cargar la capa: ';
-                
-                if (error.message.includes('400')) {
-                    errorMessage += 'Error de consulta (400). Verifica nombres de campos.';
-                } else if (error.message.includes('401')) {
-                    errorMessage += 'Error de autenticación (401). Verifica credenciales.';
-                } else if (error.message.includes('404')) {
-                    errorMessage += `Tabla "${config.table}" no encontrada (404).`;
-                } else {
-                    errorMessage += error.message;
-                }
-                
-                showMessage(errorMessage, 'error');
-                
-                // Desmarcar checkbox si hay error
-                const checkbox = document.getElementById(layerId);
-                if (checkbox) checkbox.checked = false;
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        // FUNCIÓN MEJORADA PARA AGREGAR CAPAS AL MAPA
-        async function addLayerToMap(layerId, geojson, config) {
-            if (!map || !map.isStyleLoaded()) {
-                console.warn('⚠️ Mapa no está listo para agregar capas');
-                return;
-            }
-            
-            try {
-                // Agregar fuente
-                map.addSource(layerId, {
-                    type: 'geojson',
-                    data: geojson
+                map.on('error', (e) => {
+                    console.error('❌ Error en el mapa:', e);
+                    showMessage('Error al cargar el mapa', 'error');
                 });
-                
-                if (config.type === 'fill') {
-                    // Capa de relleno con transparencia
-                    map.addLayer({
-                        id: layerId,
-                        type: 'fill',
-                        source: layerId,
-                        paint: {
-                            'fill-color': config.color,
-                            'fill-opacity': 0.4
-                        }
-                    });
-                    
-                    // Contorno más visible
-                    map.addLayer({
-                        id: layerId + '-outline',
-                        type: 'line',
-                        source: layerId,
-                        paint: {
-                            'line-color': config.color,
-                            'line-width': [
-                                'interpolate',
-                                ['linear'],
-                                ['zoom'],
-                                8, 1,
-                                14, 2
-                            ],
-                            'line-opacity': 0.9
-                        }
-                    });
-                } else if (config.type === 'line') {
-                    // Capa de líneas
-                    map.addLayer({
-                        id: layerId,
-                        type: 'line',
-                        source: layerId,
-                        paint: {
-                            'line-color': config.color,
-                            'line-width': [
-                                'interpolate',
-                                ['linear'],
-                                ['zoom'],
-                                8, 2,
-                                14, 4
-                            ],
-                            'line-opacity': 0.8
-                        }
-                    });
-                }
-                
-                // Agregar eventos de click usando template personalizado
-                map.on('click', layerId, (e) => {
-                    const props = e.features[0].properties;
-                    const content = config.infoTemplate(props);
-                    
-                    new mapboxgl.Popup({
-                        maxWidth: '400px'
-                    })
-                        .setLngLat(e.lngLat)
-                        .setHTML(content)
-                        .addTo(map);
-                });
-                
-                map.on('mouseenter', layerId, () => {
-                    map.getCanvas().style.cursor = 'pointer';
-                });
-                
-                map.on('mouseleave', layerId, () => {
-                    map.getCanvas().style.cursor = '';
-                });
-                
-                console.log(`✅ Capa ${layerId} agregada al mapa`);
-                
+
             } catch (error) {
-                console.error(`❌ Error agregando capa ${layerId} al mapa:`, error);
-                throw error;
+                console.error('💥 Error inicializando el mapa:', error);
+                showMessage('Error al inicializar el mapa: ' + error.message, 'error');
             }
         }
 
-        // FUNCIÓN MEJORADA PARA MOSTRAR INFORMACIÓN DE CAPAS
-        function showLayerInfo(layerId, features, config) {
-            const infoDiv = document.getElementById('layerInfo');
-            if (!infoDiv) return;
+        function updateSaveButton() {
+            const saveBtn = document.getElementById('saveBtn');
+            const sucsType = document.getElementById('sucsType').value;
+            const nivelFreatico = document.getElementById('nivelFreatico').value;
             
-            let html = `<div style="background: #f8fafc; border-radius: 8px; padding: 15px;">
-                       <h4 style="color: #2d3748; margin-bottom: 10px;">${config.displayName}</h4>
-                       <p><strong>Elementos cargados:</strong> ${features.length}</p>
-                       <p><strong>Tipo de geometría:</strong> ${config.type === 'fill' ? 'Polígonos' : 'Líneas'}</p>`;
-            
-            // Agregar estadísticas específicas según el tipo de capa
-            if (layerId === 'cobertura') {
-                html += generateCoberturaStats(features);
-            } else if (layerId === 'uso-tierra') {
-                html += generateUsoTierraStats(features);
-            } else if (layerId === 'cantones') {
-                html += generateCantonesStats(features);
-            } else if (layerId === 'parroquias') {
-                html += generateParroquiasStats(features);
-            } else if (layerId === 'vias') {
-                html += generateViasStats(features);
-            }
-            
-            html += `<p style="font-size: 0.85em; color: #666; margin-top: 10px;">
-                        💡 Haz clic en cualquier elemento del mapa para ver información detallada
-                     </p>`;
-            
-            html += '</div>';
-            infoDiv.innerHTML = html;
-        }
-
-        function generateCoberturaStats(features) {
-            const stats = {};
-            features.forEach(feature => {
-                const desc = feature.properties.descr || 'Sin clasificar';
-                const shortDesc = desc.length > 30 ? desc.substring(0, 30) + '...' : desc;
-                stats[shortDesc] = (stats[shortDesc] || 0) + 1;
-            });
-            
-            return generateStatsHTML('🌿 Tipos de Cobertura:', stats, features.length);
-        }
-
-        function generateUsoTierraStats(features) {
-            const stats = {};
-            features.forEach(feature => {
-                const desc = feature.properties.descr || 'Sin clasificar';
-                const shortDesc = desc.length > 30 ? desc.substring(0, 30) + '...' : desc;
-                stats[shortDesc] = (stats[shortDesc] || 0) + 1;
-            });
-            
-            return generateStatsHTML('🏞️ Tipos de Uso:', stats, features.length);
-        }
-
-        function generateCantonesStats(features) {
-            const stats = {};
-            features.forEach(feature => {
-                const canton = feature.properties.DPA_DESCAN || 'Sin nombre';
-                stats[canton] = (stats[canton] || 0) + 1;
-            });
-            
-            return generateStatsHTML('🏛️ Cantones:', stats, features.length);
-        }
-
-        function generateParroquiasStats(features) {
-            const cantonStats = {};
-            features.forEach(feature => {
-                const canton = feature.properties.DPA_DESCAN || 'Sin nombre';
-                cantonStats[canton] = (cantonStats[canton] || 0) + 1;
-            });
-            
-            return generateStatsHTML('🏘️ Parroquias por Cantón:', cantonStats, features.length);
-        }
-
-        function generateViasStats(features) {
-            const tipoStats = {};
-            features.forEach(feature => {
-                const tipo = feature.properties.tipo || 'Sin tipo';
-                tipoStats[tipo] = (tipoStats[tipo] || 0) + 1;
-            });
-            
-            return generateStatsHTML('🛣️ Tipos de Vías:', tipoStats, features.length);
-        }
-
-        function generateStatsHTML(title, stats, total) {
-            const topCategories = Object.entries(stats)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-            
-            if (topCategories.length === 0) return '';
-            
-            let html = `
-                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #e2e8f0;">
-                    <h5 style="color: #4a5568; margin-bottom: 8px;">${title}</h5>
-                    <div style="font-size: 0.8em;">
-            `;
-            
-            topCategories.forEach(([category, count]) => {
-                const percentage = ((count / total) * 100).toFixed(1);
-                html += `
-                    <div class="category-item">
-                        <span style="font-weight: 500; color: #2d3748;">${category}</span>
-                        <span style="color: #666;">${count} (${percentage}%)</span>
-                    </div>
-                `;
-            });
-            
-            html += '</div></div>';
-            return html;
-        }
-
-        // FUNCIÓN MEJORADA PARA CARGAR PUNTOS DE DATOS
-        async function loadPuntosData() {
-            try {
-                console.log('📍 Cargando puntos de datos...');
-                showLoading(true);
-                
-                const data = await fetchFromSupabase('puntos_datos', 'id,geom,sucs_type,nivel_freatico,fecha_creacion,usuario_creacion');
-                console.log('📊 Datos recibidos:', data.length, 'puntos');
-                
-                if (data && data.length > 0) {
-                    const features = [];
-                    
-                    for (let point of data) {
-                        try {
-                            let geometry;
-                            if (typeof point.geom === 'string') {
-                                geometry = JSON.parse(point.geom);
-                            } else {
-                                geometry = point.geom;
-                            }
-                            
-                            if (geometry) {
-                                features.push({
-                                    type: 'Feature',
-                                    geometry: geometry,
-                                    properties: {
-                                        id: point.id,
-                                        sucs_type: point.sucs_type || 'No especificado',
-                                        nivel_freatico: point.nivel_freatico || 'No especificado',
-                                        fecha_creacion: point.fecha_creacion || new Date().toISOString(),
-                                        usuario_creacion: point.usuario_creacion || 'Sistema'
-                                    }
-                                });
-                            }
-                        } catch (parseError) {
-                            console.warn('⚠️ Error parseando geometría:', parseError, point);
-                        }
-                    }
-                    
-                    if (features.length > 0) {
-                        const geojson = {
-                            type: 'FeatureCollection',
-                            features: features
-                        };
-                        
-                        addPointsToMap(geojson);
-                        showMessage(`${features.length} puntos de datos cargados`, 'success');
-                    } else {
-                        showMessage('No se pudieron procesar los puntos de datos', 'error');
-                    }
-                } else {
-                    console.log('ℹ️ No se encontraron puntos de datos');
-                    showMessage('No hay puntos de datos disponibles', 'error');
-                }
-            } catch (error) {
-                console.error('❌ Error cargando puntos:', error);
-                showMessage('Error al cargar puntos de datos: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
+            if (selectedCoordinates && sucsType && nivelFreatico) {
+                saveBtn.disabled = false;
+            } else {
+                saveBtn.disabled = true;
             }
         }
 
-        function addPointsToMap(geojson) {
-            if (!map || !map.isStyleLoaded()) return;
+        // Eventos para habilitar/deshabilitar botón de guardar
+        document.getElementById('sucsType').addEventListener('change', updateSaveButton);
+        document.getElementById('nivelFreatico').addEventListener('input', updateSaveButton);
 
-            try {
-                if (map.getSource('puntos-datos')) {
-                    map.getSource('puntos-datos').setData(geojson);
-                } else {
-                    map.addSource('puntos-datos', {
-                        type: 'geojson',
-                        data: geojson
-                    });
-                    
-                    map.addLayer({
-                        id: 'puntos-datos',
-                        type: 'circle',
-                        source: 'puntos-datos',
-                        paint: {
-                            'circle-radius': [
-                                'interpolate',
-                                ['linear'],
-                                ['zoom'],
-                                8, 4,
-                                14, 8
-                            ],
-                            'circle-color': '#007cbf',
-                            'circle-stroke-width': 2,
-                            'circle-stroke-color': '#ffffff',
-                            'circle-opacity': 0.8
-                        }
-                    });
-                    
-                    // Agregar etiquetas para puntos de datos
-                    map.addLayer({
-                        id: 'puntos-datos-labels',
-                        type: 'symbol',
-                        source: 'puntos-datos',
-                        layout: {
-                            'text-field': ['get', 'sucs_type'],
-                            'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
-                            'text-size': 12,
-                            'text-offset': [0, 1.5],
-                            'text-anchor': 'top'
-                        },
-                        paint: {
-                            'text-color': '#000000',
-                            'text-halo-color': '#ffffff',
-                            'text-halo-width': 2
-                        },
-                        minzoom: 12
-                    });
-                    
-                    // Popup al hacer click en puntos de datos
-                    map.on('click', 'puntos-datos', (e) => {
-                        const props = e.features[0].properties;
-                        const coordinates = e.features[0].geometry.coordinates.slice();
-                        
-                        new mapboxgl.Popup()
-                            .setLngLat(coordinates)
-                            .setHTML(`
-                                <div style="padding: 15px; min-width: 200px;">
-                                    <h4 style="margin: 0 0 10px 0; color: #2d3748;">📍 Punto de Datos</h4>
-                                    <p style="margin: 5px 0;"><strong>ID:</strong> ${props.id}</p>
-                                    <p style="margin: 5px 0;"><strong>Clasificación SUCS:</strong> ${props.sucs_type}</p>
-                                    <p style="margin: 5px 0;"><strong>Nivel Freático:</strong> ${props.nivel_freatico} m</p>
-                                    <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(props.fecha_creacion).toLocaleDateString()}</p>
-                                    <p style="margin: 5px 0;"><strong>Usuario:</strong> ${props.usuario_creacion}</p>
-                                </div>
-                            `)
-                            .addTo(map);
-                    });
-                    
-                    map.on('mouseenter', 'puntos-datos', () => {
-                        map.getCanvas().style.cursor = 'pointer';
-                    });
-                    
-                    map.on('mouseleave', 'puntos-datos', () => {
-                        map.getCanvas().style.cursor = '';
-                    });
-                }
-                
-                console.log('✅ Puntos de datos agregados al mapa');
-            } catch (error) {
-                console.error('❌ Error agregando puntos al mapa:', error);
-            }
-        }
-
-        // FUNCIONES PARA GUARDAR DATOS Y GENERAR REPORTES
-        async function saveDataPointInternal() {
-            if (!selectedCoordinates || !currentUser || currentUser.type !== 'tecnico') {
+        async function saveDataPoint() {
+            if (!selectedCoordinates) {
                 showMessage('Por favor selecciona un punto en el mapa', 'error');
                 return;
             }
             
             const sucsType = document.getElementById('sucsType').value;
             const nivelFreatico = document.getElementById('nivelFreatico').value;
+            const radioEstrato = document.getElementById('radioEstrato').value;
             
             if (!sucsType || !nivelFreatico) {
                 showMessage('Por favor completa todos los campos', 'error');
@@ -1605,15 +681,20 @@
             try {
                 showLoading(true);
                 
+                // Crear geometría del buffer para guardar
+                const bufferGeometry = createCircleBuffer(selectedCoordinates, parseInt(radioEstrato));
+                
                 const pointData = {
                     geom: JSON.stringify({
                         type: 'Point',
                         coordinates: selectedCoordinates
                     }),
+                    buffer_geom: JSON.stringify(bufferGeometry),
                     sucs_type: sucsType,
                     nivel_freatico: parseFloat(nivelFreatico),
+                    radio_estrato: parseInt(radioEstrato),
                     fecha_creacion: new Date().toISOString(),
-                    usuario_creacion: currentUser.username
+                    usuario_creacion: 'Técnico'
                 };
                 
                 const response = await fetch(`${SUPABASE_URL}/rest/v1/puntos_datos`, {
@@ -1628,16 +709,16 @@
                 });
                 
                 if (response.ok) {
-                    showMessage('Punto guardado exitosamente', 'success');
+                    showMessage(`Punto guardado exitosamente con estrato de ${radioEstrato}m`, 'success');
                     
                     // Limpiar formulario
                     document.getElementById('sucsType').value = '';
                     document.getElementById('nivelFreatico').value = '';
-                    document.getElementById('selectedCoords').innerHTML = '';
+                    document.getElementById('selectedCoords').style.display = 'none';
                     selectedCoordinates = null;
                     
-                    // Limpiar marcador temporal
                     removeTemporaryMarker();
+                    updateSaveButton();
                     
                     // Recargar puntos
                     await loadPuntosData();
@@ -1653,234 +734,274 @@
                 showLoading(false);
             }
         }
-        
-        async function generateReportInternal() {
-            if (!currentUser || currentUser.type !== 'usuario') {
-                showMessage('Solo los usuarios pueden generar reportes', 'error');
-                return;
-            }
-            
+
+        async function loadPuntosData() {
             try {
-                showLoading(true);
+                console.log('📍 Cargando puntos de datos...');
                 
-                // Obtener datos de puntos
-                const puntosData = await fetchFromSupabase('puntos_datos');
-                
-                if (!puntosData || puntosData.length === 0) {
-                    showMessage('No hay datos disponibles para generar el reporte', 'error');
-                    return;
-                }
-                
-                // Crear contenido del reporte
-                let reportContent = `
-                    <div style="padding: 20px; font-family: Arial, sans-serif;">
-                        <h1 style="color: #2d3748; border-bottom: 3px solid #667eea; padding-bottom: 10px;">
-                            📊 Reporte de Datos Geotécnicos - Azuay
-                        </h1>
-                        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p><strong>📅 Fecha de generación:</strong> ${new Date().toLocaleDateString()}</p>
-                            <p><strong>👤 Usuario:</strong> ${currentUser.username}</p>
-                            <p><strong>📍 Total de puntos:</strong> ${puntosData.length}</p>
-                        </div>
-                        
-                        <h2 style="color: #4a5568; margin-top: 30px;">🌱 Distribución por Tipo de Suelo (SUCS)</h2>
-                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <thead>
-                                <tr style="background: linear-gradient(45deg, #667eea, #764ba2); color: white;">
-                                    <th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Tipo SUCS</th>
-                                    <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Cantidad</th>
-                                    <th style="border: 1px solid #ddd; padding: 12px; text-align: center;">Porcentaje</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
-                
-                // Contar tipos de suelo
-                const sucsCount = {};
-                puntosData.forEach(punto => {
-                    const sucs = punto.sucs_type || 'No especificado';
-                    sucsCount[sucs] = (sucsCount[sucs] || 0) + 1;
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/puntos_datos?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
                 
-                // Agregar filas de la tabla con colores alternos
-                let isEven = false;
-                Object.entries(sucsCount)
-                    .sort((a, b) => b[1] - a[1])
-                    .forEach(([sucs, count]) => {
-                        const percentage = ((count / puntosData.length) * 100).toFixed(1);
-                        const bgColor = isEven ? '#f8fafc' : '#ffffff';
-                        reportContent += `
-                            <tr style="background-color: ${bgColor};">
-                                <td style="border: 1px solid #e2e8f0; padding: 10px;"><strong>${sucs}</strong></td>
-                                <td style="border: 1px solid #e2e8f0; padding: 10px; text-align: center;">${count}</td>
-                                <td style="border: 1px solid #e2e8f0; padding: 10px; text-align: center;">${percentage}%</td>
-                            </tr>
-                        `;
-                        isEven = !isEven;
-                    });
-                
-                reportContent += `
-                            </tbody>
-                        </table>
-                        
-                        <h2 style="color: #4a5568; margin-top: 40px;">💧 Análisis del Nivel Freático</h2>
-                `;
-                
-                // Análisis del nivel freático
-                const nivelesFreáticos = puntosData
-                    .filter(p => p.nivel_freatico && !isNaN(p.nivel_freatico))
-                    .map(p => parseFloat(p.nivel_freatico));
-                
-                if (nivelesFreáticos.length > 0) {
-                    const promedio = (nivelesFreáticos.reduce((a, b) => a + b, 0) / nivelesFreáticos.length).toFixed(2);
-                    const minimo = Math.min(...nivelesFreáticos).toFixed(2);
-                    const maximo = Math.max(...nivelesFreáticos).toFixed(2);
-                    
-                    reportContent += `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 20px 0;">
-                            <div style="background: #e6f3ff; padding: 15px; border-radius: 8px; text-align: center;">
-                                <h3 style="color: #2563eb; margin: 0;">Promedio</h3>
-                                <p style="font-size: 1.5em; font-weight: bold; margin: 5px 0;">${promedio} m</p>
-                            </div>
-                            <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; text-align: center;">
-                                <h3 style="color: #0284c7; margin: 0;">Mínimo</h3>
-                                <p style="font-size: 1.5em; font-weight: bold; margin: 5px 0;">${minimo} m</p>
-                            </div>
-                            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; text-align: center;">
-                                <h3 style="color: #d97706; margin: 0;">Máximo</h3>
-                                <p style="font-size: 1.5em; font-weight: bold; margin: 5px 0;">${maximo} m</p>
-                            </div>
-                        </div>
-                    `;
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
                 
-                reportContent += `
-                        <h2 style="color: #4a5568; margin-top: 40px;">📋 Detalle de Puntos de Datos</h2>
-                        <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9em; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                            <thead>
-                                <tr style="background: linear-gradient(45deg, #667eea, #764ba2); color: white;">
-                                    <th style="border: 1px solid #ddd; padding: 10px;">ID</th>
-                                    <th style="border: 1px solid #ddd; padding: 10px;">Tipo SUCS</th>
-                                    <th style="border: 1px solid #ddd; padding: 10px;">Nivel Freático (m)</th>
-                                    <th style="border: 1px solid #ddd; padding: 10px;">Fecha</th>
-                                    <th style="border: 1px solid #ddd; padding: 10px;">Usuario</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                `;
+                const data = await response.json();
+                console.log('📊 Datos recibidos:', data.length, 'puntos');
                 
-                // Agregar filas de puntos de datos
-                isEven = false;
-                puntosData.forEach(punto => {
-                    const bgColor = isEven ? '#f8fafc' : '#ffffff';
-                    reportContent += `
-                        <tr style="background-color: ${bgColor};">
-                            <td style="border: 1px solid #e2e8f0; padding: 8px;">${punto.id}</td>
-                            <td style="border: 1px solid #e2e8f0; padding: 8px;"><strong>${punto.sucs_type || 'N/A'}</strong></td>
-                            <td style="border: 1px solid #e2e8f0; padding: 8px; text-align: center;">${punto.nivel_freatico || 'N/A'}</td>
-                            <td style="border: 1px solid #e2e8f0; padding: 8px;">${new Date(punto.fecha_creacion).toLocaleDateString()}</td>
-                            <td style="border: 1px solid #e2e8f0; padding: 8px;">${punto.usuario_creacion || 'N/A'}</td>
-                        </tr>
-                    `;
-                    isEven = !isEven;
-                });
-                
-                reportContent += `
-                            </tbody>
-                        </table>
-                        
-                        <div style="margin-top: 40px; padding: 20px; background: #f8fafc; border-radius: 8px; border-left: 5px solid #667eea;">
-                            <h3 style="color: #4a5568; margin-top: 0;">📊 Resumen Ejecutivo</h3>
-                            <p>Este reporte contiene un análisis completo de los datos geotécnicos recopilados en la provincia del Azuay. 
-                            Los datos incluyen clasificaciones de suelo según el Sistema Unificado de Clasificación de Suelos (SUCS) 
-                            y mediciones del nivel freático en diferentes puntos de la región.</p>
-                            <p><strong>Generado por:</strong> Sistema Geoportal Azuay | <strong>Fecha:</strong> ${new Date().toLocaleString()}</p>
-                        </div>
-                    </div>
-                `;
-                
-                // Abrir ventana con el reporte
-                const reportWindow = window.open('', '_blank');
-                reportWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>Reporte Geotécnico - Azuay</title>
-                        <meta charset="UTF-8">
-                        <style>
-                            @media print {
-                                .no-print { display: none; }
-                                table { page-break-inside: avoid; }
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        ${reportContent}
-                        <div class="no-print" style="margin-top: 30px; text-align: center; border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                            <button onclick="window.print()" style="padding: 12px 24px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px; font-weight: 600;">
-                                🖨️ Imprimir Reporte
-                            </button>
-                            <button onclick="window.close()" style="padding: 12px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                                ✖️ Cerrar
-                            </button>
-                        </div>
-                    </body>
-                    </html>
-                `);
-                reportWindow.document.close();
-                
-                showMessage('Reporte generado exitosamente', 'success');
-                
+                if (data && data.length > 0) {
+                    addPointsToMap(data);
+                } else {
+                    console.log('ℹ️ No se encontraron puntos de datos');
+                }
             } catch (error) {
-                console.error('❌ Error generando reporte:', error);
-                showMessage('Error al generar el reporte: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
+                console.error('❌ Error cargando puntos:', error);
+                showMessage('Error al cargar puntos de datos', 'error');
             }
         }
 
-        function queryLayerFeatures(point) {
-            if (!map) return;
-            
+        function addPointsToMap(data) {
+            if (!map || !map.isStyleLoaded()) return;
+
             try {
-                const features = map.queryRenderedFeatures(point);
+                const pointFeatures = [];
+                const bufferFeatures = [];
                 
-                if (features.length > 0) {
-                    const layerInfo = features.map(feature => ({
-                        layer: feature.layer.id,
-                        properties: feature.properties
-                    }));
-                    
-                    // Mostrar información en el sidebar
-                    const infoDiv = document.getElementById('layerInfo');
-                    if (infoDiv) {
-                        let html = '<div style="background: #f8fafc; border-radius: 8px; padding: 15px;"><h4 style="color: #2d3748;">🔍 Información del Punto</h4>';
+                data.forEach(point => {
+                    try {
+                        // Procesar punto
+                        let pointGeometry;
+                        if (typeof point.geom === 'string') {
+                            pointGeometry = JSON.parse(point.geom);
+                        } else {
+                            pointGeometry = point.geom;
+                        }
                         
-                        layerInfo.forEach(info => {
-                            if (info.layer.includes('temp') || info.layer.includes('label')) return;
-                            
-                            html += `<div style="margin: 15px 0; padding: 10px; background: #e2e8f0; border-radius: 5px;">
-                                    <h5 style="color: #4a5568; margin: 0 0 8px 0;">${info.layer.toUpperCase()}</h5>`;
-                            
-                            Object.entries(info.properties).forEach(([key, value]) => {
-                                if (value && value !== 'N/A' && key !== 'id') {
-                                    html += `<p style="margin: 3px 0; font-size: 0.9em;"><strong>${key}:</strong> ${value}</p>`;
+                        if (pointGeometry) {
+                            pointFeatures.push({
+                                type: 'Feature',
+                                geometry: pointGeometry,
+                                properties: {
+                                    id: point.id,
+                                    sucs_type: point.sucs_type || 'No especificado',
+                                    nivel_freatico: point.nivel_freatico || 'No especificado',
+                                    radio_estrato: point.radio_estrato || 100,
+                                    fecha_creacion: point.fecha_creacion,
+                                    usuario_creacion: point.usuario_creacion || 'Sistema'
                                 }
                             });
+                        }
+                        
+                        // Procesar buffer si existe
+                        if (point.buffer_geom) {
+                            let bufferGeometry;
+                            if (typeof point.buffer_geom === 'string') {
+                                bufferGeometry = JSON.parse(point.buffer_geom);
+                            } else {
+                                bufferGeometry = point.buffer_geom;
+                            }
                             
-                            html += '</div>';
+                            if (bufferGeometry) {
+                                bufferFeatures.push({
+                                    type: 'Feature',
+                                    geometry: bufferGeometry,
+                                    properties: {
+                                        id: point.id,
+                                        sucs_type: point.sucs_type,
+                                        radio_estrato: point.radio_estrato || 100
+                                    }
+                                });
+                            }
+                        }
+                    } catch (parseError) {
+                        console.warn('⚠️ Error procesando punto:', parseError);
+                    }
+                });
+                
+                // Agregar buffers al mapa
+                if (bufferFeatures.length > 0) {
+                    if (map.getSource('puntos-buffer')) {
+                        map.getSource('puntos-buffer').setData({
+                            type: 'FeatureCollection',
+                            features: bufferFeatures
+                        });
+                    } else {
+                        map.addSource('puntos-buffer', {
+                            type: 'geojson',
+                            data: {
+                                type: 'FeatureCollection',
+                                features: bufferFeatures
+                            }
                         });
                         
-                        html += '</div>';
-                        infoDiv.innerHTML = html;
+                        map.addLayer({
+                            id: 'puntos-buffer',
+                            type: 'fill',
+                            source: 'puntos-buffer',
+                            paint: {
+                                'fill-color': [
+                                    'case',
+                                    ['==', ['get', 'sucs_type'], 'GW'], '#22c55e',
+                                    ['==', ['get', 'sucs_type'], 'GP'], '#16a34a',
+                                    ['==', ['get', 'sucs_type'], 'GM'], '#15803d',
+                                    ['==', ['get', 'sucs_type'], 'GC'], '#166534',
+                                    ['==', ['get', 'sucs_type'], 'SW'], '#f59e0b',
+                                    ['==', ['get', 'sucs_type'], 'SP'], '#d97706',
+                                    ['==', ['get', 'sucs_type'], 'SM'], '#b45309',
+                                    ['==', ['get', 'sucs_type'], 'SC'], '#92400e',
+                                    ['==', ['get', 'sucs_type'], 'ML'], '#3b82f6',
+                                    ['==', ['get', 'sucs_type'], 'CL'], '#1d4ed8',
+                                    ['==', ['get', 'sucs_type'], 'OL'], '#1e40af',
+                                    ['==', ['get', 'sucs_type'], 'MH'], '#ef4444',
+                                    ['==', ['get', 'sucs_type'], 'CH'], '#dc2626',
+                                    ['==', ['get', 'sucs_type'], 'OH'], '#b91c1c',
+                                    ['==', ['get', 'sucs_type'], 'PT'], '#8b5cf6',
+                                    '#6b7280'
+                                ],
+                                'fill-opacity': 0.3
+                            }
+                        });
+                        
+                        map.addLayer({
+                            id: 'puntos-buffer-outline',
+                            type: 'line',
+                            source: 'puntos-buffer',
+                            paint: {
+                                'line-color': [
+                                    'case',
+                                    ['==', ['get', 'sucs_type'], 'GW'], '#22c55e',
+                                    ['==', ['get', 'sucs_type'], 'GP'], '#16a34a',
+                                    ['==', ['get', 'sucs_type'], 'GM'], '#15803d',
+                                    ['==', ['get', 'sucs_type'], 'GC'], '#166534',
+                                    ['==', ['get', 'sucs_type'], 'SW'], '#f59e0b',
+                                    ['==', ['get', 'sucs_type'], 'SP'], '#d97706',
+                                    ['==', ['get', 'sucs_type'], 'SM'], '#b45309',
+                                    ['==', ['get', 'sucs_type'], 'SC'], '#92400e',
+                                    ['==', ['get', 'sucs_type'], 'ML'], '#3b82f6',
+                                    ['==', ['get', 'sucs_type'], 'CL'], '#1d4ed8',
+                                    ['==', ['get', 'sucs_type'], 'OL'], '#1e40af',
+                                    ['==', ['get', 'sucs_type'], 'MH'], '#ef4444',
+                                    ['==', ['get', 'sucs_type'], 'CH'], '#dc2626',
+                                    ['==', ['get', 'sucs_type'], 'OH'], '#b91c1c',
+                                    ['==', ['get', 'sucs_type'], 'PT'], '#8b5cf6',
+                                    '#6b7280'
+                                ],
+                                'line-width': 2,
+                                'line-opacity': 0.8
+                            }
+                        });
                     }
                 }
+                
+                // Agregar puntos al mapa
+                if (pointFeatures.length > 0) {
+                    if (map.getSource('puntos-datos')) {
+                        map.getSource('puntos-datos').setData({
+                            type: 'FeatureCollection',
+                            features: pointFeatures
+                        });
+                    } else {
+                        map.addSource('puntos-datos', {
+                            type: 'geojson',
+                            data: {
+                                type: 'FeatureCollection',
+                                features: pointFeatures
+                            }
+                        });
+                        
+                        map.addLayer({
+                            id: 'puntos-datos',
+                            type: 'circle',
+                            source: 'puntos-datos',
+                            paint: {
+                                'circle-radius': [
+                                    'interpolate',
+                                    ['linear'],
+                                    ['zoom'],
+                                    8, 6,
+                                    14, 10
+                                ],
+                                'circle-color': '#ffffff',
+                                'circle-stroke-width': 3,
+                                'circle-stroke-color': '#000000',
+                                'circle-opacity': 1
+                            }
+                        });
+                        
+                        // Etiquetas para los puntos
+                        map.addLayer({
+                            id: 'puntos-datos-labels',
+                            type: 'symbol',
+                            source: 'puntos-datos',
+                            layout: {
+                                'text-field': ['get', 'sucs_type'],
+                                'text-font': ['Open Sans Semibold', 'Arial Unicode MS Bold'],
+                                'text-size': 10,
+                                'text-offset': [0, 2],
+                                'text-anchor': 'top'
+                            },
+                            paint: {
+                                'text-color': '#000000',
+                                'text-halo-color': '#ffffff',
+                                'text-halo-width': 2
+                            },
+                            minzoom: 11
+                        });
+                        
+                        // Popup para puntos
+                        map.on('click', 'puntos-datos', (e) => {
+                            const props = e.features[0].properties;
+                            const coordinates = e.features[0].geometry.coordinates.slice();
+                            
+                            new mapboxgl.Popup()
+                                .setLngLat(coordinates)
+                                .setHTML(`
+                                    <div style="padding: 15px; min-width: 200px;">
+                                        <h4 style="margin: 0 0 10px 0; color: #1f2937;">📍 Punto de Datos</h4>
+                                        <p style="margin: 5px 0;"><strong>ID:</strong> ${props.id}</p>
+                                        <p style="margin: 5px 0;"><strong>Tipo SUCS:</strong> <span style="background: #dbeafe; padding: 2px 6px; border-radius: 4px;">${props.sucs_type}</span></p>
+                                        <p style="margin: 5px 0;"><strong>Nivel Freático:</strong> ${props.nivel_freatico} m</p>
+                                        <p style="margin: 5px 0;"><strong>Radio del Estrato:</strong> ${props.radio_estrato} m</p>
+                                        <p style="margin: 5px 0;"><strong>Fecha:</strong> ${new Date(props.fecha_creacion).toLocaleDateString()}</p>
+                                        <p style="margin: 5px 0;"><strong>Usuario:</strong> ${props.usuario_creacion}</p>
+                                    </div>
+                                `)
+                                .addTo(map);
+                        });
+                        
+                        map.on('mouseenter', 'puntos-datos', () => {
+                            map.getCanvas().style.cursor = 'pointer';
+                        });
+                        
+                        map.on('mouseleave', 'puntos-datos', () => {
+                            map.getCanvas().style.cursor = '';
+                        });
+                    }
+                    
+                    showMessage(`${pointFeatures.length} puntos con estratos cargados`, 'success');
+                }
+                
+                console.log('✅ Puntos y estratos agregados al mapa');
             } catch (error) {
-                console.error('❌ Error querying features:', error);
+                console.error('❌ Error agregando puntos al mapa:', error);
             }
         }
 
-        console.log('✅ Todas las funciones principales cargadas correctamente');
-    </script>
-</body>
-</html>
+        // Funciones simples para las capas
+        async function loadLayer(layerId) {
+            // Implementación básica para cargar capas
+            console.log('Cargando capa:', layerId);
+            showMessage(`Cargando capa ${layerId}...`, 'success');
+        }
+
+        function removeLayer(layerId) {
+            // Implementación básica para remover capas
+            console.log('Removiendo capa:', layerId);
+        }
+
+        console.log('✅ Aplicación inicializada correctamente');
