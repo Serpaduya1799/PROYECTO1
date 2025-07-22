@@ -6,90 +6,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    #map { height: 100vh; }
-    .panel {
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    .menu {
       position: absolute;
       top: 10px;
       left: 10px;
-      z-index: 1000;
       background: white;
       padding: 10px;
       border-radius: 8px;
-      box-shadow: 0 0 10px #888;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      z-index: 1000;
     }
-    button { margin: 5px 0; width: 100%; }
+    .menu button {
+      display: block;
+      margin: 5px 0;
+      width: 100%;
+      padding: 5px;
+      font-weight: bold;
+    }
+    .user { background-color: #007bff; color: white; }
+    .tech { background-color: #ffc107; color: black; }
+    .addpoint { background-color: #28a745; color: white; }
   </style>
 </head>
 <body>
+  <div class="menu">
+    <b>🟢 Geoportal Azuay</b><br><br>
+    <label>Selecciona Rol:</label>
+    <button class="user" onclick="setUserRole('usuario')">👤 Usuario</button>
+    <button class="tech" onclick="setUserRole('tecnico')">⚒ Técnico</button>
+    <br>
+    <label>Gestión de Datos:</label>
+    <button class="addpoint" onclick="addPoint()">➕ Añadir Punto</button>
+  </div>
 
-<div id="map"></div>
+  <div id="map"></div>
 
-<div class="panel">
-  <h4>🔵 Geoportal Azuay</h4>
-  <b>Selecciona Rol:</b><br />
-  <button onclick="modoUsuario()" style="background:#007bff;color:white;">👤 Usuario</button>
-  <button onclick="modoTecnico()" style="background:orange;">🛠 Técnico</button>
-  <br><b>Gestión de Datos:</b><br>
-  <button onclick="añadirPunto()" style="background:green;color:white;">➕ Añadir Punto</button>
-</div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-  // Claves de Supabase
-  const SUPABASE_URL = "https://xgywnwvvrtfoltkcxfgc.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY";
+    let map = L.map('map').setView([-2.9, -79.0], 9);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  // Mapa base
-  const map = L.map('map').setView([-2.9, -78.99], 9);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  // Capas
-  let capaParroquias, capaCantones, capaCobertura, capaUso, capaVias;
-
-  async function cargarCapa(nombreTabla, estilo) {
-    const { data, error } = await supabase
-      .rpc('get_geojson', { tabla: nombreTabla });
-
-    if (error) {
-      console.error('Error cargando capa', nombreTabla, error);
-      return null;
+    let currentRole = 'usuario';
+    function setUserRole(role) {
+      currentRole = role;
+      alert('Rol seleccionado: ' + role);
     }
 
-    return L.geoJSON(data, estilo);
-  }
+    function addPoint() {
+      if (currentRole !== 'tecnico') {
+        alert('Solo el técnico puede añadir puntos.');
+        return;
+      }
+      map.once('click', async function (e) {
+        const { lat, lng } = e.latlng;
+        const { error } = await supabase.from('puntosdatos').insert([{ latitud: lat, longitud: lng }]);
+        if (error) alert('Error al insertar punto.');
+        else {
+          L.marker([lat, lng]).addTo(map);
+          alert('Punto añadido exitosamente.');
+        }
+      });
+    }
 
-  async function cargarTodo() {
-    capaParroquias = await cargarCapa('PARROQUIAS_AZUAY', { style: { color: '#0000FF' } });
-    capaCantones = await cargarCapa('CANTONESDELAZUAY', { style: { color: '#9900cc' } });
-    capaCobertura = await cargarCapa('COBERTURA_DE_LA_TIERRA_AZUAY', { style: { color: '#008000' } });
-    capaUso = await cargarCapa('USO_DE_LA_TIERRA_AZUAY', { style: { color: '#FF9900' } });
-    capaVias = await cargarCapa('vias', { style: { color: '#333333' } });
+    async function cargarCapa(nombreTabla, estilo) {
+      const { data, error } = await supabase.rpc('geojson_view', { tabla: nombreTabla });
+      if (error || !data) {
+        console.warn('No se pudo cargar capa: ' + nombreTabla);
+        return;
+      }
+      L.geoJSON(data, estilo ? { style: estilo } : {}).addTo(map);
+    }
 
-    [capaParroquias, capaCantones, capaCobertura, capaUso, capaVias].forEach(capa => {
-      if (capa) capa.addTo(map);
-    });
-  }
-
-  cargarTodo();
-
-  // Botones
-  function modoUsuario() {
-    alert("Modo Usuario activado.\nPuedes visualizar e imprimir datos.");
-  }
-
-  function modoTecnico() {
-    alert("Modo Técnico activado.\nPuedes ingresar nuevos datos.");
-  }
-
-  function añadirPunto() {
-    alert("Funcionalidad de añadir punto próximamente disponible.");
-  }
-</script>
-
+    cargarCapa('PARROQUIAS AZUAY', { color: '#4B0082' });
+    cargarCapa('CANTONESDELAZUAy', { color: '#000080' });
+    cargarCapa('COBERTURA DE LA TIERRA AZUAY', { color: '#228B22' });
+    cargarCapa('USO DE LA TIERRA AZUAY', { color: '#FFA500' });
+    cargarCapa('vias', { color: '#A52A2A' });
+  </script>
 </body>
 </html>
