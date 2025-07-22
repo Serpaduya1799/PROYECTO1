@@ -664,7 +664,7 @@
             });
         }
 
-        // Configuración de capas
+        // Configuración de capas corregida
         const LAYER_CONFIG = {
             'cobertura': {
                 table: 'COBERTURA%20DE%20LA%20TIERRA%20AZUAY',
@@ -676,7 +676,7 @@
                 table: 'USO%20DE%20LA%20TIERRA%20AZUAY',
                 color: '#f59e0b',
                 type: 'fill',
-                fields: 'id,geom,descr,cag_desc,pen_desc,DPA_DESCAN'
+                fields: 'id,geom,descr,DPA_DESCAN'
             },
             'cantones': {
                 table: 'CANTONESDELAZUAY',
@@ -694,7 +694,7 @@
                 table: 'vias',
                 color: '#8b5cf6',
                 type: 'line',
-                fields: 'id,geom,nombre,tipo,estado'
+                fields: 'id,geom'
             }
         };
 
@@ -848,8 +848,6 @@
                     content += `
                         <h4>🏞️ Uso de la Tierra</h4>
                         <p><strong>Descripción:</strong> ${props.descr || 'N/A'}</p>
-                        <p><strong>Categoría:</strong> ${props.cag_desc || 'N/A'}</p>
-                        <p><strong>Pendiente:</strong> ${props.pen_desc || 'N/A'}</p>
                         <p><strong>Cantón:</strong> ${props.DPA_DESCAN || 'N/A'}</p>
                     `;
                 } else if (layerId === 'cantones') {
@@ -868,9 +866,7 @@
                 } else if (layerId === 'vias') {
                     content += `
                         <h4>🛣️ Vía</h4>
-                        <p><strong>Nombre:</strong> ${props.nombre || 'N/A'}</p>
-                        <p><strong>Tipo:</strong> ${props.tipo || 'N/A'}</p>
-                        <p><strong>Estado:</strong> ${props.estado || 'N/A'}</p>
+                        <p><strong>ID de la vía:</strong> ${props.id || 'N/A'}</p>
                     `;
                 }
                 
