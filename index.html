@@ -444,24 +444,6 @@
         const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
         
-        // Validar configuración
-        function validateConfig() {
-            console.log('Validando configuración...');
-            console.log('Mapbox token:', MAPBOX_TOKEN ? 'Presente ✓' : 'Ausente ✗');
-            console.log('Supabase URL:', SUPABASE_URL ? 'Presente ✓' : 'Ausente ✗');
-            console.log('Supabase Key:', SUPABASE_KEY ? 'Presente ✓' : 'Ausente ✗');
-            
-            if (!MAPBOX_TOKEN) {
-                throw new Error('Token de Mapbox no configurado');
-            }
-            
-            if (!MAPBOX_TOKEN.startsWith('pk.')) {
-                throw new Error('Token de Mapbox inválido (debe empezar con pk.)');
-            }
-            
-            return true;
-        }
-        
         // Estado global
         let map = null;
         let currentUser = null;
@@ -470,35 +452,45 @@
         
         // Configurar Mapbox
         console.log('Configurando Mapbox...');
-        try {
-            validateConfig();
-            if (typeof mapboxgl !== 'undefined') {
-                mapboxgl.accessToken = MAPBOX_TOKEN;
-                console.log('Mapbox configurado correctamente');
-            } else {
-                console.error('Mapbox GL JS no está disponible');
-            }
-        } catch (error) {
-            console.error('Error en configuración:', error);
+        if (typeof mapboxgl !== 'undefined') {
+            mapboxgl.accessToken = MAPBOX_TOKEN;
+            console.log('Mapbox configurado correctamente');
+        } else {
+            console.error('Mapbox GL JS no está disponible');
         }
+    </script>
+    
+    <script>
+        // FUNCIONES GLOBALES - Deben estar disponibles desde el HTML
         
-        // Funciones globales para HTML - deben estar al inicio
-        window.toggleLayer = function(layerId) {
-            console.log('toggleLayer called:', layerId);
+        function toggleLayer(layerId) {
+            console.log('🔄 toggleLayer called:', layerId);
             const checkbox = document.getElementById(layerId);
             
-            if (checkbox && checkbox.checked) {
+            if (!checkbox) {
+                console.error('Checkbox no encontrado:', layerId);
+                return;
+            }
+            
+            if (checkbox.checked) {
+                console.log('✅ Cargando capa:', layerId);
                 loadLayer(layerId);
             } else {
+                console.log('❌ Removiendo capa:', layerId);
                 removeLayer(layerId);
             }
-        };
+        }
         
-        window.showLogin = function(type) {
-            console.log('showLogin called:', type);
+        function showLogin(type) {
+            console.log('🔑 showLogin called:', type);
             const modal = document.getElementById('loginModal');
             const title = document.getElementById('modalTitle');
             const subtitle = document.getElementById('modalSubtitle');
+            
+            if (!modal || !title || !subtitle) {
+                console.error('Elementos del modal no encontrados');
+                return;
+            }
             
             if (type === 'usuario') {
                 title.textContent = 'Acceso de Usuario';
@@ -510,69 +502,216 @@
             
             modal.classList.remove('hidden');
             modal.dataset.userType = type;
-        };
+        }
         
-        window.closeLogin = function() {
-            document.getElementById('loginModal').classList.add('hidden');
-            document.getElementById('loginForm').reset();
-        };
+        function closeLogin() {
+            console.log('❌ Cerrando login');
+            const modal = document.getElementById('loginModal');
+            const form = document.getElementById('loginForm');
+            
+            if (modal) modal.classList.add('hidden');
+            if (form) form.reset();
+        }
         
-        window.logout = function() {
+        function logout() {
+            console.log('🚪 Logout called');
             currentUser = null;
             selectedCoordinates = null;
             
-            document.getElementById('userDisplay').classList.add('hidden');
-            document.getElementById('logoutBtn').classList.add('hidden');
-            document.getElementById('technicalControls').classList.add('hidden');
-            document.getElementById('userControls').classList.add('hidden');
-            const selectedCoords = document.getElementById('selectedCoords');
-            if (selectedCoords) selectedCoords.innerHTML = '';
+            const elements = {
+                userDisplay: document.getElementById('userDisplay'),
+                logoutBtn: document.getElementById('logoutBtn'),
+                technicalControls: document.getElementById('technicalControls'),
+                userControls: document.getElementById('userControls'),
+                selectedCoords: document.getElementById('selectedCoords')
+            };
+            
+            if (elements.userDisplay) elements.userDisplay.classList.add('hidden');
+            if (elements.logoutBtn) elements.logoutBtn.classList.add('hidden');
+            if (elements.technicalControls) elements.technicalControls.classList.add('hidden');
+            if (elements.userControls) elements.userControls.classList.add('hidden');
+            if (elements.selectedCoords) elements.selectedCoords.innerHTML = '';
             
             removeTemporaryMarker();
             showMessage('Sesión cerrada', 'success');
-        };
+        }
         
-        window.saveDataPoint = function() {
-            console.log('saveDataPoint called');
+        function saveDataPoint() {
+            console.log('💾 saveDataPoint called');
             saveDataPointInternal();
-        };
+        }
         
-        window.generateReport = function() {
-            console.log('generateReport called');
+        function generateReport() {
+            console.log('📄 generateReport called');
             generateReportInternal();
-        };
+        }
+        
+        // FUNCIONES DE UTILIDAD
+        
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            if (loading) {
+                if (show) {
+                    loading.classList.remove('hidden');
+                } else {
+                    loading.classList.add('hidden');
+                }
+            }
+        }
+        
+        function showMessage(message, type) {
+            console.log(`${type === 'error' ? '❌' : '✅'} ${message}`);
+            
+            // Eliminar mensajes anteriores
+            const existingMessages = document.querySelectorAll('.error-message, .success-message');
+            existingMessages.forEach(msg => msg.remove());
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.textContent = message;
+            
+            // Agregar al sidebar
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.insertBefore(messageDiv, sidebar.firstChild);
+                
+                // Eliminar después de 5 segundos
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.remove();
+                    }
+                }, 5000);
+            }
+        }
+        
+        function removeLayer(layerId) {
+            if (!map) {
+                console.warn('Mapa no disponible para remover capa');
+                return;
+            }
+            
+            const layersToRemove = [layerId, layerId + '-outline', layerId + '-labels'];
+            
+            layersToRemove.forEach(layer => {
+                try {
+                    if (map.getLayer && map.getLayer(layer)) {
+                        map.removeLayer(layer);
+                        console.log('🗑️ Capa removida:', layer);
+                    }
+                } catch (error) {
+                    console.warn('Error removiendo capa:', layer, error);
+                }
+            });
+            
+            try {
+                if (map.getSource && map.getSource(layerId)) {
+                    map.removeSource(layerId);
+                    console.log('🗑️ Fuente removida:', layerId);
+                }
+            } catch (error) {
+                console.warn('Error removiendo fuente:', layerId, error);
+            }
+        }
+        
+        function removeTemporaryMarker() {
+            if (map && map.getLayer) {
+                try {
+                    if (map.getLayer('temp-point')) {
+                        map.removeLayer('temp-point');
+                        map.removeSource('temp-point');
+                        console.log('🗑️ Marcador temporal removido');
+                    }
+                } catch (error) {
+                    console.warn('Error removiendo marcador temporal:', error);
+                }
+            }
+        }
+        
+        function addTemporaryMarker(coordinates) {
+            if (!map || !coordinates) return;
+            
+            try {
+                const pointData = {
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: coordinates
+                    }
+                };
+                
+                if (map.getSource && map.getSource('temp-point')) {
+                    map.getSource('temp-point').setData(pointData);
+                } else {
+                    map.addSource('temp-point', {
+                        type: 'geojson',
+                        data: pointData
+                    });
+                    
+                    map.addLayer({
+                        id: 'temp-point',
+                        type: 'circle',
+                        source: 'temp-point',
+                        paint: {
+                            'circle-radius': 10,
+                            'circle-color': '#ff4444',
+                            'circle-stroke-width': 3,
+                            'circle-stroke-color': '#ffffff'
+                        }
+                    });
+                }
+                console.log('📍 Marcador temporal agregado:', coordinates);
+            } catch (error) {
+                console.error('Error agregando marcador temporal:', error);
+            }
+        }
+        
+        console.log('✅ Funciones globales definidas');
+    </script>
+    
+    <script>
+        // INICIALIZACIÓN Y FUNCIONES PRINCIPALES
+        
+        // INICIALIZACIÓN Y FUNCIONES PRINCIPALES
         
         // Inicializar aplicación
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, checking dependencies...');
+            console.log('📄 DOM loaded, checking dependencies...');
             
             // Verificar que Mapbox GL JS esté cargado
             if (typeof mapboxgl === 'undefined') {
-                console.error('Mapbox GL JS no está cargado');
+                console.error('❌ Mapbox GL JS no está cargado');
                 showMessage('Error: Mapbox GL JS no se pudo cargar', 'error');
                 return;
             }
             
-            console.log('Mapbox GL JS version:', mapboxgl.version);
-            console.log('DOM loaded, initializing map...');
+            console.log('🗺️ Mapbox GL JS version:', mapboxgl.version);
             
             // Configurar eventos de formulario
             setupEventListeners();
             
-            // Pequeño delay para asegurar que todo esté listo
+            // Inicializar mapa con un pequeño delay
             setTimeout(() => {
                 initMap();
             }, 100);
         });
         
         function setupEventListeners() {
+            console.log('🔗 Configurando event listeners...');
+            
             // Login form
             const loginForm = document.getElementById('loginForm');
             if (loginForm) {
                 loginForm.addEventListener('submit', (e) => {
                     e.preventDefault();
-                    const userType = document.getElementById('loginModal').dataset.userType;
+                    
+                    const modal = document.getElementById('loginModal');
+                    const userType = modal ? modal.dataset.userType : null;
                     const username = document.getElementById('username').value;
+                    
+                    if (!userType) {
+                        showMessage('Error: Tipo de usuario no definido', 'error');
+                        return;
+                    }
                     
                     // Validación simple
                     if (username.length < 3) {
@@ -585,21 +724,245 @@
                         username: username
                     };
                     
-                    document.getElementById('userDisplay').textContent = `${username} (${userType})`;
-                    document.getElementById('userDisplay').classList.remove('hidden');
-                    document.getElementById('logoutBtn').classList.remove('hidden');
+                    console.log('👤 Usuario logueado:', currentUser);
+                    
+                    // Actualizar UI
+                    const userDisplay = document.getElementById('userDisplay');
+                    const logoutBtn = document.getElementById('logoutBtn');
+                    
+                    if (userDisplay) {
+                        userDisplay.textContent = `${username} (${userType})`;
+                        userDisplay.classList.remove('hidden');
+                    }
+                    
+                    if (logoutBtn) {
+                        logoutBtn.classList.remove('hidden');
+                    }
                     
                     if (userType === 'tecnico') {
-                        document.getElementById('technicalControls').classList.remove('hidden');
+                        const technicalControls = document.getElementById('technicalControls');
+                        if (technicalControls) technicalControls.classList.remove('hidden');
                     } else {
-                        document.getElementById('userControls').classList.remove('hidden');
+                        const userControls = document.getElementById('userControls');
+                        if (userControls) userControls.classList.remove('hidden');
                     }
                     
                     closeLogin();
                     showMessage(`¡Bienvenido ${username}!`, 'success');
                 });
+                
+                console.log('✅ Event listener del login configurado');
+            } else {
+                console.warn('⚠️ Formulario de login no encontrado');
             }
         }
+        
+        function initMap() {
+            try {
+                console.log('🗺️ Inicializando mapa...');
+                
+                const mapContainer = document.getElementById('map');
+                if (!mapContainer) {
+                    throw new Error('Contenedor del mapa no encontrado');
+                }
+                
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v12',
+                    center: [-79.0059, -2.9001], // Cuenca, Ecuador
+                    zoom: 10,
+                    maxZoom: 18,
+                    minZoom: 8,
+                    attributionControl: true,
+                    logoPosition: 'bottom-left'
+                });
+                
+                console.log('🎯 Objeto mapa creado');
+                
+                // Eventos del mapa
+                map.on('load', () => {
+                    console.log('🎉 Mapa cargado correctamente');
+                    showMessage('Mapa cargado correctamente', 'success');
+                    
+                    // Cambiar a vista satelital después de cargar
+                    setTimeout(() => {
+                        if (map.isStyleLoaded()) {
+                            map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+                            console.log('🛰️ Cambiado a vista satelital');
+                        }
+                    }, 2000);
+                    
+                    // Cargar puntos de datos
+                    loadPuntosData();
+                });
+                
+                map.on('error', (e) => {
+                    console.error('❌ Error en el mapa:', e);
+                    if (e.error && e.error.message) {
+                        if (e.error.message.includes('401') || e.error.message.includes('Unauthorized')) {
+                            showMessage('Error: Token de Mapbox inválido', 'error');
+                        } else if (e.error.message.includes('rate limit')) {
+                            showMessage('Error: Límite de uso de Mapbox excedido', 'error');
+                        } else {
+                            showMessage('Error del mapa: ' + e.error.message, 'error');
+                        }
+                    } else {
+                        showMessage('Error desconocido del mapa', 'error');
+                    }
+                });
+                
+                // Agregar controles después de un delay
+                setTimeout(() => {
+                    try {
+                        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+                        map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+                        map.addControl(new mapboxgl.ScaleControl(), 'bottom-right');
+                        console.log('🎛️ Controles agregados');
+                    } catch (controlError) {
+                        console.error('Error agregando controles:', controlError);
+                    }
+                }, 1000);
+                
+                // Mostrar coordenadas en tiempo real
+                map.on('mousemove', (e) => {
+                    const coordsElement = document.getElementById('coordinates');
+                    if (coordsElement) {
+                        coordsElement.textContent = 
+                            `Lat: ${e.lngLat.lat.toFixed(4)}, Lng: ${e.lngLat.lng.toFixed(4)}`;
+                    }
+                });
+                
+                // Click en el mapa
+                map.on('click', (e) => {
+                    console.log('🖱️ Click en mapa:', e.lngLat);
+                    
+                    if (currentUser && currentUser.type === 'tecnico') {
+                        selectedCoordinates = [e.lngLat.lng, e.lngLat.lat];
+                        
+                        const coordsElement = document.getElementById('selectedCoords');
+                        if (coordsElement) {
+                            coordsElement.innerHTML = 
+                                `<strong>Punto seleccionado:</strong><br>Lat: ${e.lngLat.lat.toFixed(6)}<br>Lng: ${e.lngLat.lng.toFixed(6)}`;
+                        }
+                        
+                        removeTemporaryMarker();
+                        addTemporaryMarker(selectedCoordinates);
+                    } else if (currentUser && currentUser.type === 'usuario') {
+                        queryLayerFeatures(e.point);
+                    }
+                });
+                
+                console.log('✅ Mapa inicializado correctamente');
+                
+            } catch (error) {
+                console.error('💥 Error crítico inicializando el mapa:', error);
+                showMessage('Error crítico al inicializar el mapa: ' + error.message, 'error');
+                
+                const mapContainer = document.getElementById('map');
+                if (mapContainer) {
+                    mapContainer.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; flex-direction: column;">
+                            <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; max-width: 400px;">
+                                <h3 style="color: #e53e3e; margin-bottom: 15px;">❌ Error de Mapa</h3>
+                                <p style="color: #4a5568; margin-bottom: 10px;"><strong>Error:</strong> ${error.message}</p>
+                                <p style="color: #4a5568; margin-bottom: 10px;"><strong>Token Mapbox:</strong> ${MAPBOX_TOKEN ? '✅ Presente' : '❌ Ausente'}</p>
+                                <p style="color: #4a5568; margin-bottom: 15px;"><strong>Mapbox GL JS:</strong> ${typeof mapboxgl !== 'undefined' ? '✅ Cargado' : '❌ No cargado'}</p>
+                                <button onclick="location.reload()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                                    🔄 Recargar Página
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        }
+        
+        // Función simple para cargar puntos de datos
+        async function loadPuntosData() {
+            try {
+                console.log('📍 Cargando puntos de datos...');
+                showLoading(true);
+                
+                const data = await fetchFromSupabase('puntos_datos');
+                console.log('📊 Datos recibidos:', data.length, 'puntos');
+                
+                if (data && data.length > 0) {
+                    // Procesar y agregar puntos al mapa
+                    // Por ahora solo mostramos un mensaje
+                    showMessage(`${data.length} puntos de datos encontrados`, 'success');
+                } else {
+                    console.log('ℹ️ No se encontraron puntos de datos');
+                }
+            } catch (error) {
+                console.error('❌ Error cargando puntos:', error);
+                showMessage('Error al cargar puntos de datos', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        // Funciones principales que necesitamos implementar
+        async function loadLayer(layerId) {
+            console.log('🔄 Cargando capa:', layerId);
+            showMessage(`Cargando capa ${layerId}...`, 'success');
+            
+            // Por ahora solo mostramos un mensaje
+            // Implementaremos la carga real después
+            setTimeout(() => {
+                showMessage(`Capa ${layerId} no disponible aún`, 'error');
+                const checkbox = document.getElementById(layerId);
+                if (checkbox) checkbox.checked = false;
+            }, 1000);
+        }
+        
+        async function fetchFromSupabase(table, select = '*', limit = null) {
+            try {
+                const encodedTable = encodeURIComponent(table);
+                let url = `${SUPABASE_URL}/rest/v1/${encodedTable}?select=${encodeURIComponent(select)}`;
+                if (limit) {
+                    url += `&limit=${limit}`;
+                }
+                
+                console.log('🌐 Fetching from:', url);
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Error response:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('❌ Error fetching from Supabase:', error);
+                throw error;
+            }
+        }
+        
+        async function saveDataPointInternal() {
+            console.log('💾 Saving data point...');
+            showMessage('Función de guardado en desarrollo', 'error');
+        }
+        
+        async function generateReportInternal() {
+            console.log('📄 Generating report...');
+            showMessage('Función de reportes en desarrollo', 'error');
+        }
+        
+        function queryLayerFeatures(point) {
+            console.log('🔍 Querying features at point:', point);
+        }
+        
+        console.log('✅ Todas las funciones principales cargadas');
+    </script>
         
         function initMap() {
             try {
