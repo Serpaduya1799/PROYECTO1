@@ -664,10 +664,311 @@
             });
         }
 
+        // Configuración de capas
+        const LAYER_CONFIG = {
+            'cobertura': {
+                table: 'COBERTURA%20DE%20LA%20TIERRA%20AZUAY',
+                color: '#22c55e',
+                type: 'fill',
+                fields: 'id,geom,descr,niv1,niv2,DPA_DESCAN'
+            },
+            'uso-tierra': {
+                table: 'USO%20DE%20LA%20TIERRA%20AZUAY',
+                color: '#f59e0b',
+                type: 'fill',
+                fields: 'id,geom,descr,cag_desc,pen_desc,DPA_DESCAN'
+            },
+            'cantones': {
+                table: 'CANTONESDELAZUAY',
+                color: '#ef4444',
+                type: 'line',
+                fields: 'id,geom,DPA_DESCAN,DPA_DESPRO'
+            },
+            'parroquias': {
+                table: 'PARROQUIAS%20AZUAY',
+                color: '#3b82f6',
+                type: 'line',
+                fields: 'id,geom,DPA_DESPAR,DPA_DESCAN,DPA_DESPRO'
+            },
+            'vias': {
+                table: 'vias',
+                color: '#8b5cf6',
+                type: 'line',
+                fields: 'id,geom,nombre,tipo,estado'
+            }
+        };
+
+        // Función para cargar capas
+        async function loadLayer(layerId) {
+            const config = LAYER_CONFIG[layerId];
+            if (!config) {
+                console.error('Configuración de capa no encontrada:', layerId);
+                return;
+            }
+
+            try {
+                console.log(`Cargando capa: ${layerId}`);
+                showMessage(`Cargando ${layerId}...`, 'success');
+
+                const url = `${SUPABASE_URL}/rest/v1/${config.table}?select=${config.fields}&limit=50`;
+                
+                const response = await fetch(url, {
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log(`Datos recibidos para ${layerId}:`, data.length, 'registros');
+
+                if (data.length === 0) {
+                    showMessage(`No hay datos para ${layerId}`, 'error');
+                    return;
+                }
+
+                const features = [];
+                let processedCount = 0;
+
+                for (const item of data) {
+                    try {
+                        if (!item.geom) continue;
+
+                        let geometry;
+                        if (typeof item.geom === 'string') {
+                            geometry = JSON.parse(item.geom);
+                        } else {
+                            geometry = item.geom;
+                        }
+
+                        if (geometry && geometry.type && geometry.coordinates) {
+                            features.push({
+                                type: 'Feature',
+                                geometry: geometry,
+                                properties: item
+                            });
+                            processedCount++;
+                        }
+                    } catch (error) {
+                        console.warn(`Error procesando item ${item.id}:`, error);
+                    }
+                }
+
+                if (features.length > 0) {
+                    addLayerToMap(layerId, features, config);
+                    showMessage(`${layerId}: ${features.length} elementos cargados`, 'success');
+                } else {
+                    showMessage(`No se pudieron procesar geometrías para ${layerId}`, 'error');
+                }
+
+            } catch (error) {
+                console.error(`Error cargando ${layerId}:`, error);
+                showMessage(`Error cargando ${layerId}: ${error.message}`, 'error');
+            }
+        }
+
+        // Función para agregar capa al mapa
+        function addLayerToMap(layerId, features, config) {
+            const geojson = {
+                type: 'FeatureCollection',
+                features: features
+            };
+
+            // Remover capa si ya existe
+            if (map.getSource(layerId)) {
+                map.removeLayer(layerId);
+                if (map.getLayer(layerId + '-outline')) {
+                    map.removeLayer(layerId + '-outline');
+                }
+                map.removeSource(layerId);
+            }
+
+            // Agregar fuente
+            map.addSource(layerId, {
+                type: 'geojson',
+                data: geojson
+            });
+
+            if (config.type === 'fill') {
+                // Capa de relleno
+                map.addLayer({
+                    id: layerId,
+                    type: 'fill',
+                    source: layerId,
+                    paint: {
+                        'fill-color': config.color,
+                        'fill-opacity': 0.3
+                    }
+                });
+
+                // Contorno
+                map.addLayer({
+                    id: layerId + '-outline',
+                    type: 'line',
+                    source: layerId,
+                    paint: {
+                        'line-color': config.color,
+                        'line-width': 1,
+                        'line-opacity': 0.8
+                    }
+                });
+            } else {
+                // Capa de líneas
+                map.addLayer({
+                    id: layerId,
+                    type: 'line',
+                    source: layerId,
+                    paint: {
+                        'line-color': config.color,
+                        'line-width': 2,
+                        'line-opacity': 0.8
+                    }
+                });
+            }
+
+            // Eventos de click
+            map.on('click', layerId, (e) => {
+                const props = e.features[0].properties;
+                let content = `<div style="padding: 10px; max-width: 300px;">`;
+                
+                if (layerId === 'cobertura') {
+                    content += `
+                        <h4>🌿 Cobertura de la Tierra</h4>
+                        <p><strong>Descripción:</strong> ${props.descr || 'N/A'}</p>
+                        <p><strong>Nivel 1:</strong> ${props.niv1 || 'N/A'}</p>
+                        <p><strong>Nivel 2:</strong> ${props.niv2 || 'N/A'}</p>
+                        <p><strong>Cantón:</strong> ${props.DPA_DESCAN || 'N/A'}</p>
+                    `;
+                } else if (layerId === 'uso-tierra') {
+                    content += `
+                        <h4>🏞️ Uso de la Tierra</h4>
+                        <p><strong>Descripción:</strong> ${props.descr || 'N/A'}</p>
+                        <p><strong>Categoría:</strong> ${props.cag_desc || 'N/A'}</p>
+                        <p><strong>Pendiente:</strong> ${props.pen_desc || 'N/A'}</p>
+                        <p><strong>Cantón:</strong> ${props.DPA_DESCAN || 'N/A'}</p>
+                    `;
+                } else if (layerId === 'cantones') {
+                    content += `
+                        <h4>🏛️ Cantón</h4>
+                        <p><strong>Cantón:</strong> ${props.DPA_DESCAN || 'N/A'}</p>
+                        <p><strong>Provincia:</strong> ${props.DPA_DESPRO || 'N/A'}</p>
+                    `;
+                } else if (layerId === 'parroquias') {
+                    content += `
+                        <h4>🏘️ Parroquia</h4>
+                        <p><strong>Parroquia:</strong> ${props.DPA_DESPAR || 'N/A'}</p>
+                        <p><strong>Cantón:</strong> ${props.DPA_DESCAN || 'N/A'}</p>
+                        <p><strong>Provincia:</strong> ${props.DPA_DESPRO || 'N/A'}</p>
+                    `;
+                } else if (layerId === 'vias') {
+                    content += `
+                        <h4>🛣️ Vía</h4>
+                        <p><strong>Nombre:</strong> ${props.nombre || 'N/A'}</p>
+                        <p><strong>Tipo:</strong> ${props.tipo || 'N/A'}</p>
+                        <p><strong>Estado:</strong> ${props.estado || 'N/A'}</p>
+                    `;
+                }
+                
+                content += `<p style="font-size: 0.8em; color: #666; margin-top: 5px;">ID: ${props.id}</p></div>`;
+
+                new mapboxgl.Popup()
+                    .setLngLat(e.lngLat)
+                    .setHTML(content)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', layerId, () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', layerId, () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+            console.log(`Capa ${layerId} agregada al mapa`);
+        }
+
+        // Función para remover capa
+        function removeLayer(layerId) {
+            if (map.getSource(layerId)) {
+                if (map.getLayer(layerId)) {
+                    map.removeLayer(layerId);
+                }
+                if (map.getLayer(layerId + '-outline')) {
+                    map.removeLayer(layerId + '-outline');
+                }
+                map.removeSource(layerId);
+                console.log(`Capa ${layerId} removida`);
+            }
+        }
+
         // Event listeners
         document.getElementById('saveBtn').addEventListener('click', savePoint);
         document.getElementById('sucsType').addEventListener('change', updateSaveButton);
         document.getElementById('nivelFreatico').addEventListener('input', updateSaveButton);
+        
+        // Event listeners para las capas
+        document.getElementById('cobertura').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                loadLayer('cobertura');
+            } else {
+                removeLayer('cobertura');
+            }
+        });
+
+        document.getElementById('uso-tierra').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                loadLayer('uso-tierra');
+            } else {
+                removeLayer('uso-tierra');
+            }
+        });
+
+        document.getElementById('cantones').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                loadLayer('cantones');
+            } else {
+                removeLayer('cantones');
+            }
+        });
+
+        document.getElementById('parroquias').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                loadLayer('parroquias');
+            } else {
+                removeLayer('parroquias');
+            }
+        });
+
+        document.getElementById('vias').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                loadLayer('vias');
+            } else {
+                removeLayer('vias');
+            }
+        });
+
+        document.getElementById('puntos-datos').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                loadPoints();
+            } else {
+                if (map.getSource('points')) {
+                    map.removeLayer('points');
+                    map.removeLayer('point-labels');
+                    map.removeSource('points');
+                }
+                if (map.getSource('buffers')) {
+                    map.removeLayer('buffers-fill');
+                    map.removeLayer('buffers-line');
+                    map.removeSource('buffers');
+                }
+            }
+        });
         
         // Actualizar buffer cuando cambie radio
         document.getElementById('radioEstrato').addEventListener('change', () => {
