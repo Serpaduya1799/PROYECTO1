@@ -228,17 +228,24 @@
 
                 <div class="form-group">
                     <label>Provincia:</label>
-                    <input type="text" id="provincia" value="Azuay" readonly style="background: #f0f0f0;">
+                    <select id="provincia" required>
+                        <option value="">Seleccione...</option>
+                        <option value="Azuay">Azuay</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label>Cantón:</label>
-                    <input type="text" id="canton" readonly style="background: #f0f0f0;" placeholder="Se detectará automáticamente">
+                    <select id="canton" required>
+                        <option value="">Seleccione primero la provincia...</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label>Parroquia:</label>
-                    <input type="text" id="parroquia" readonly style="background: #f0f0f0;" placeholder="Se detectará automáticamente">
+                    <select id="parroquia" required>
+                        <option value="">Seleccione primero el cantón...</option>
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -270,6 +277,31 @@
         let selectedCoords = null;
         let dataMarkers = [];
         let layers = {};
+
+        // Datos para selectores
+        const cantones = [
+            'Cuenca', 'Girón', 'Gualaceo', 'Nabón', 'Paute', 'Pucará', 'San Fernando',
+            'Santa Isabel', 'Sigsig', 'Oña', 'Chordeleg', 'El Pan', 'Sevilla de Oro', 
+            'Guachapala', 'Camilo Ponce Enríquez'
+        ];
+
+        const parroquias = {
+            'Cuenca': ['Cuenca', 'Baños', 'Cumbe', 'Chaucha', 'Molleturo', 'Nulti', 'Octavio Cordero Palacios', 'Paccha', 'Quingeo', 'Ricaurte', 'San Joaquín', 'Santa Ana', 'Sayausí', 'Sidcay', 'Sinincay', 'Tarqui', 'Turi', 'Valle', 'Victoria del Portete'],
+            'Girón': ['Girón', 'Asunción', 'San Gerardo'],
+            'Gualaceo': ['Gualaceo', 'Chordeleg', 'Jadán', 'Remigio Crespo Toral', 'San Juan', 'Zhidmad'],
+            'Nabón': ['Nabón', 'Cochapata', 'La Paz', 'Las Nieves'],
+            'Paute': ['Paute', 'Bulán', 'Chicán', 'El Cabo', 'Tomebamba'],
+            'Pucará': ['Pucará', 'Camilo Ponce Enríquez'],
+            'San Fernando': ['San Fernando'],
+            'Santa Isabel': ['Santa Isabel', 'Abdón Calderón', 'El Carmen de Pijilí', 'Shaglli'],
+            'Sigsig': ['Sigsig', 'Cuchil', 'Gima', 'Guel', 'Ludo', 'San Bartolomé'],
+            'Oña': ['Oña', 'Susudel'],
+            'Chordeleg': ['Chordeleg', 'Delegate', 'La Unión', 'Luis Galarza Orellana', 'San Martín de Puzhio'],
+            'El Pan': ['El Pan'],
+            'Sevilla de Oro': ['Sevilla de Oro', 'Amaluza', 'Palmas'],
+            'Guachapala': ['Guachapala'],
+            'Camilo Ponce Enríquez': ['Camilo Ponce Enríquez']
+        };
 
         // Función UTM
         function toUTM(lat, lng) {
@@ -329,6 +361,32 @@
             document.getElementById('cancelBtn').onclick = closeModal;
             document.getElementById('geoForm').onsubmit = saveData;
             document.getElementById('radioBuffer').onchange = createBuffer;
+            
+            // Selectores de ubicación
+            document.getElementById('provincia').onchange = function() {
+                const canton = document.getElementById('canton');
+                const parroquia = document.getElementById('parroquia');
+                
+                canton.innerHTML = '<option value="">Seleccione cantón...</option>';
+                parroquia.innerHTML = '<option value="">Seleccione parroquia...</option>';
+                
+                if (this.value === 'Azuay') {
+                    cantones.forEach(c => {
+                        canton.innerHTML += `<option value="${c}">${c}</option>`;
+                    });
+                }
+            };
+            
+            document.getElementById('canton').onchange = function() {
+                const parroquia = document.getElementById('parroquia');
+                parroquia.innerHTML = '<option value="">Seleccione parroquia...</option>';
+                
+                if (parroquias[this.value]) {
+                    parroquias[this.value].forEach(p => {
+                        parroquia.innerHTML += `<option value="${p}">${p}</option>`;
+                    });
+                }
+            };
             
             // Capas
             document.querySelectorAll('input[id^="layer-"]').forEach(cb => {
@@ -490,48 +548,7 @@
             document.getElementById('coordUtmX').textContent = utm.x;
             document.getElementById('coordUtmY').textContent = utm.y;
             
-            // Detectar ubicación
-            detectLocation(e.latlng);
-            
             document.getElementById('dataModal').style.display = 'block';
-        }
-
-        function detectLocation(coords) {
-            let canton = 'Cuenca';
-            let parroquia = 'Cuenca';
-            
-            // Detectar cantón
-            if (layers['cantones']) {
-                layers['cantones'].eachLayer(function(layer) {
-                    try {
-                        if (layer.getBounds && layer.getBounds().contains(coords)) {
-                            // Buscar en las propiedades del feature
-                            if (layer.feature && layer.feature.properties) {
-                                const props = layer.feature.properties;
-                                canton = props.DPA_DESCAN || props.CANTON || props.NOMBRE || props.name || 'Cuenca';
-                            }
-                        }
-                    } catch (e) {}
-                });
-            }
-            
-            // Detectar parroquia
-            if (layers['parroquias']) {
-                layers['parroquias'].eachLayer(function(layer) {
-                    try {
-                        if (layer.getBounds && layer.getBounds().contains(coords)) {
-                            // Buscar en las propiedades del feature
-                            if (layer.feature && layer.feature.properties) {
-                                const props = layer.feature.properties;
-                                parroquia = props.DPA_DESPAR || props.PARROQUIA || props.NOMBRE || props.name || 'Cuenca';
-                            }
-                        }
-                    } catch (e) {}
-                });
-            }
-            
-            document.getElementById('canton').value = canton;
-            document.getElementById('parroquia').value = parroquia;
         }
 
         function createBuffer() {
@@ -582,7 +599,7 @@
                     radio_influencia: parseInt(document.getElementById('radioBuffer').value),
                     indice_plasticidad: parseFloat(document.getElementById('plasticidad').value) || null,
                     nivel_freatico: parseFloat(document.getElementById('freatico').value) || null,
-                    provincia: 'Azuay',
+                    provincia: document.getElementById('provincia').value,
                     canton: document.getElementById('canton').value,
                     parroquia: document.getElementById('parroquia').value,
                     observaciones: document.getElementById('observaciones').value || null,
