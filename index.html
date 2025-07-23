@@ -242,10 +242,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Parroquia:</label>
-                    <select id="parroquia" required>
-                        <option value="">Seleccione primero el cantón...</option>
-                    </select>
+                    <label>Dirección:</label>
+                    <input type="text" id="direccion" placeholder="Ingrese la dirección del punto">
                 </div>
 
                 <div class="form-group">
@@ -378,14 +376,7 @@
             };
             
             document.getElementById('canton').onchange = function() {
-                const parroquia = document.getElementById('parroquia');
-                parroquia.innerHTML = '<option value="">Seleccione parroquia...</option>';
-                
-                if (parroquias[this.value]) {
-                    parroquias[this.value].forEach(p => {
-                        parroquia.innerHTML += `<option value="${p}">${p}</option>`;
-                    });
-                }
+                // Ya no necesita llenar parroquias
             };
             
             // Capas
@@ -601,7 +592,7 @@
                     nivel_freatico: parseFloat(document.getElementById('freatico').value) || null,
                     provincia: document.getElementById('provincia').value,
                     canton: document.getElementById('canton').value,
-                    parroquia: document.getElementById('parroquia').value,
+                    direccion: document.getElementById('direccion').value,
                     observaciones: document.getElementById('observaciones').value || null,
                     fecha_registro: new Date().toISOString()
                 };
@@ -610,7 +601,7 @@
                 
                 if (error) {
                     if (error.code === '42P01') {
-                        alert('CREAR TABLA EN PGADMIN:\n\nCREATE TABLE datos_geotecnicos (\n  id SERIAL PRIMARY KEY,\n  nombre_tecnico VARCHAR(100),\n  latitud DOUBLE PRECISION,\n  longitud DOUBLE PRECISION,\n  utm_x INTEGER,\n  utm_y INTEGER,\n  tipo_suelo_sucs VARCHAR(10),\n  profundidad_muestra DECIMAL(5,2),\n  radio_influencia INTEGER,\n  indice_plasticidad DECIMAL(5,2),\n  nivel_freatico DECIMAL(10,2),\n  provincia VARCHAR(50),\n  canton VARCHAR(50),\n  parroquia VARCHAR(100),\n  observaciones TEXT,\n  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);');
+                        alert('CREAR TABLA EN PGADMIN:\n\nCREATE TABLE datos_geotecnicos (\n  id SERIAL PRIMARY KEY,\n  nombre_tecnico VARCHAR(100),\n  latitud DOUBLE PRECISION,\n  longitud DOUBLE PRECISION,\n  utm_x INTEGER,\n  utm_y INTEGER,\n  tipo_suelo_sucs VARCHAR(10),\n  profundidad_muestra DECIMAL(5,2),\n  radio_influencia INTEGER,\n  indice_plasticidad DECIMAL(5,2),\n  nivel_freatico DECIMAL(10,2),\n  provincia VARCHAR(50),\n  canton VARCHAR(50),\n  direccion TEXT,\n  observaciones TEXT,\n  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);');
                         updateStatus('Tabla no existe - Ver instrucciones', 'error');
                         return;
                     }
@@ -661,7 +652,7 @@
                                     <p><strong>🎯 Radio:</strong> ${punto.radio_influencia}m</p>
                                     <p><strong>📈 Plasticidad:</strong> ${punto.indice_plasticidad || 'N/A'}%</p>
                                     <p><strong>💧 Freático:</strong> ${punto.nivel_freatico || 'N/A'}m</p>
-                                    <p><strong>📍 Ubicación:</strong> ${punto.parroquia}, ${punto.canton}</p>
+                                    <p><strong>📍 Ubicación:</strong> ${punto.direccion || 'Sin dirección'}, ${punto.canton}</p>
                                     <p><strong>📅 Fecha:</strong> ${new Date(punto.fecha_registro).toLocaleDateString()}</p>
                                     ${punto.observaciones ? `<p><strong>📝 Obs:</strong> ${punto.observaciones}</p>` : ''}
                                 </div>
