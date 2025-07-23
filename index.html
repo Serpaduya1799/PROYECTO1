@@ -1,4 +1,28 @@
-<!DOCTYPE html>
+function clearMarkers() {
+            dataMarkers.forEach(marker => map.removeLayer(marker));
+            bufferMarkers.forEach(buffer => map.removeLayer(buffer));
+            dataMarkers = [];
+            bufferMarkers = [];
+            updateStatus('Marcadores y buffers eliminados', 'success');
+        }
+
+        function closeModal() {
+            document.getElementById('dataModal').style.display = 'none';
+            document.getElementById('geoForm').reset();
+            
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+                currentMarker = null;
+            }
+            
+            if (currentBuffer) {
+                map.removeLayer(currentBuffer);
+                currentBuffer = null;
+            }
+            
+            if (isAddingData) toggleAddData();
+            selectedCoords = null;
+        }<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -84,6 +108,11 @@
 
             <form id="geoForm">
                 <div class="form-group">
+                    <label>Nombre del Técnico/Investigador:</label>
+                    <input type="text" id="nombreTecnico" required placeholder="Ingrese su nombre completo">
+                </div>
+
+                <div class="form-group">
                     <label>Tipo de Suelo (SUCS):</label>
                     <select id="tipoSuelo" required>
                         <option value="">Seleccione...</option>
@@ -103,6 +132,23 @@
                 </div>
 
                 <div class="form-group">
+                    <label>Profundidad de Muestra (m):</label>
+                    <input type="number" id="profundidad" step="0.1" min="0" max="50" required placeholder="Ej: 1.5">
+                </div>
+
+                <div class="form-group">
+                    <label>Radio de Influencia del Suelo (m):</label>
+                    <select id="radioBuffer" required>
+                        <option value="">Seleccione radio...</option>
+                        <option value="50">50m - Zona muy localizada</option>
+                        <option value="100">100m - Zona pequeña</option>
+                        <option value="200">200m - Zona media</option>
+                        <option value="500">500m - Zona amplia</option>
+                        <option value="1000">1000m - Zona extensa</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Índice de Plasticidad (%):</label>
                     <input type="number" id="plasticidad" step="0.1" min="0" max="100">
                 </div>
@@ -114,24 +160,17 @@
 
                 <div class="form-group">
                     <label>Provincia:</label>
-                    <select id="provincia" required>
-                        <option value="">Seleccione...</option>
-                        <option value="Azuay">Azuay</option>
-                    </select>
+                    <input type="text" id="provincia" readonly style="background: #f0f0f0;">
                 </div>
 
                 <div class="form-group">
                     <label>Cantón:</label>
-                    <select id="canton" required>
-                        <option value="">Primero seleccione provincia...</option>
-                    </select>
+                    <input type="text" id="canton" readonly style="background: #f0f0f0;">
                 </div>
 
                 <div class="form-group">
                     <label>Parroquia:</label>
-                    <select id="parroquia" required>
-                        <option value="">Primero seleccione cantón...</option>
-                    </select>
+                    <input type="text" id="parroquia" readonly style="background: #f0f0f0;">
                 </div>
 
                 <div class="form-group">
@@ -160,9 +199,11 @@
         let map, supabase;
         let isAddingData = false;
         let currentMarker = null;
+        let currentBuffer = null;
         let selectedCoords = null;
         let layers = {};
         let dataMarkers = [];
+        let bufferMarkers = [];
 
         // Datos para selectores
         const cantones = ['Cuenca', 'Girón', 'Gualaceo', 'Nabón', 'Paute', 'Pucará', 'San Fernando', 'Santa Isabel', 'Sigsig', 'Oña', 'Chordeleg', 'El Pan', 'Sevilla de Oro', 'Guachapala', 'Camilo Ponce Enríquez'];
@@ -247,29 +288,10 @@
             document.getElementById('cancelBtn').onclick = closeModal;
             document.getElementById('geoForm').onsubmit = saveData;
             
-            // Selectores de ubicación
-            document.getElementById('provincia').onchange = function() {
-                const canton = document.getElementById('canton');
-                const parroquia = document.getElementById('parroquia');
-                
-                canton.innerHTML = '<option value="">Seleccione cantón...</option>';
-                parroquia.innerHTML = '<option value="">Seleccione parroquia...</option>';
-                
-                if (this.value === 'Azuay') {
-                    cantones.forEach(c => {
-                        canton.innerHTML += `<option value="${c}">${c}</option>`;
-                    });
-                }
-            };
-            
-            document.getElementById('canton').onchange = function() {
-                const parroquia = document.getElementById('parroquia');
-                parroquia.innerHTML = '<option value="">Seleccione parroquia...</option>';
-                
-                if (parroquias[this.value]) {
-                    parroquias[this.value].forEach(p => {
-                        parroquia.innerHTML += `<option value="${p}">${p}</option>`;
-                    });
+            // Event para crear buffer cuando se selecciona radio
+            document.getElementById('radioBuffer').onchange = function() {
+                if (this.value && selectedCoords) {
+                    createBuffer(this.value);
                 }
             };
 
@@ -403,12 +425,13 @@
             }
         }
 
-        function onMapClick(e) {
+        async function onMapClick(e) {
             if (!isAddingData) return;
             
             selectedCoords = e.latlng;
             
             if (currentMarker) map.removeLayer(currentMarker);
+            if (currentBuffer) map.removeLayer(currentBuffer);
             
             currentMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
             
@@ -419,7 +442,99 @@
             document.getElementById('coordUtmX').textContent = utm.x;
             document.getElementById('coordUtmY').textContent = utm.y;
             
+            // Detectar automáticamente ubicación administrativa
+            await detectLocation(e.latlng);
+            
             document.getElementById('dataModal').style.display = 'block';
+        }
+
+        async function detectLocation(latlng) {
+            updateStatus('Detectando ubicación...', 'warning');
+            
+            try {
+                // Buscar en qué cantón está el punto
+                const canton = await findPointInLayer('cantones', latlng);
+                if (canton) {
+                    document.getElementById('provincia').value = 'Azuay';
+                    document.getElementById('canton').value = canton;
+                    console.log('Cantón detectado:', canton);
+                }
+                
+                // Buscar en qué parroquia está el punto
+                const parroquia = await findPointInLayer('parroquias', latlng);
+                if (parroquia) {
+                    document.getElementById('parroquia').value = parroquia;
+                    console.log('Parroquia detectada:', parroquia);
+                }
+                
+                if (canton || parroquia) {
+                    updateStatus('Ubicación detectada automáticamente', 'success');
+                } else {
+                    updateStatus('No se pudo detectar ubicación', 'warning');
+                    // Fallback manual
+                    document.getElementById('provincia').value = 'Azuay';
+                    document.getElementById('canton').value = 'Sin detectar';
+                    document.getElementById('parroquia').value = 'Sin detectar';
+                }
+                
+            } catch (error) {
+                console.error('Error detectando ubicación:', error);
+                updateStatus('Error detectando ubicación', 'error');
+                // Valores por defecto
+                document.getElementById('provincia').value = 'Azuay';
+                document.getElementById('canton').value = 'Sin detectar';
+                document.getElementById('parroquia').value = 'Sin detectar';
+            }
+        }
+
+        async function findPointInLayer(layerName, latlng) {
+            if (!layers[layerName]) return null;
+            
+            let result = null;
+            
+            layers[layerName].eachLayer(function(layer) {
+                if (layer.getBounds && layer.getBounds().contains(latlng)) {
+                    // Obtener el nombre del polígono
+                    if (layer.feature && layer.feature.properties) {
+                        const props = layer.feature.properties;
+                        // Buscar campos comunes para nombres
+                        result = props.DPA_DESCAN || props.DPA_DESPRO || props.DPA_DESPAR || 
+                                props.CANTON || props.PARROQUIA || props.NOMBRE || 
+                                props.name || props.NAME || 'Detectado';
+                    }
+                }
+            });
+            
+            return result;
+        }
+
+        function createBuffer(radius) {
+            if (!selectedCoords || !radius) return;
+            
+            // Remover buffer anterior
+            if (currentBuffer) map.removeLayer(currentBuffer);
+            
+            // Crear círculo de buffer
+            currentBuffer = L.circle([selectedCoords.lat, selectedCoords.lng], {
+                radius: parseInt(radius),
+                color: '#3498db',
+                fillColor: '#3498db',
+                fillOpacity: 0.2,
+                weight: 2,
+                dashArray: '5, 5'
+            }).addTo(map);
+            
+            // Agregar popup al buffer
+            currentBuffer.bindPopup(`
+                <div style="text-align: center;">
+                    <h4>🎯 Área de Influencia</h4>
+                    <p><strong>Radio:</strong> ${radius} metros</p>
+                    <p><strong>Área:</strong> ${(Math.PI * Math.pow(radius, 2) / 10000).toFixed(2)} hectáreas</p>
+                    <p>Esta zona se considera con el mismo tipo de suelo</p>
+                </div>
+            `);
+            
+            updateStatus(`Buffer de ${radius}m creado`, 'success');
         }
 
         async function saveData(e) {
@@ -436,11 +551,14 @@
                 const utm = toUTM(selectedCoords.lat, selectedCoords.lng);
                 
                 const data = {
+                    nombre_tecnico: document.getElementById('nombreTecnico').value,
                     latitud: selectedCoords.lat,
                     longitud: selectedCoords.lng,
                     utm_x: utm.x,
                     utm_y: utm.y,
                     tipo_suelo_sucs: document.getElementById('tipoSuelo').value,
+                    profundidad_muestra: parseFloat(document.getElementById('profundidad').value),
+                    radio_influencia: parseInt(document.getElementById('radioBuffer').value),
                     indice_plasticidad: parseFloat(document.getElementById('plasticidad').value) || null,
                     nivel_freatico: parseFloat(document.getElementById('freatico').value) || null,
                     provincia: document.getElementById('provincia').value,
@@ -454,7 +572,7 @@
                 
                 if (error) {
                     if (error.code === '42P01') {
-                        alert('Tabla no existe. Créala en pgAdmin con:\n\nCREATE TABLE datos_geotecnicos (\n  id SERIAL PRIMARY KEY,\n  latitud DOUBLE PRECISION,\n  longitud DOUBLE PRECISION,\n  utm_x INTEGER,\n  utm_y INTEGER,\n  tipo_suelo_sucs VARCHAR(10),\n  indice_plasticidad DECIMAL(5,2),\n  nivel_freatico DECIMAL(10,2),\n  provincia VARCHAR(50),\n  canton VARCHAR(50),\n  parroquia VARCHAR(100),\n  observaciones TEXT,\n  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);');
+                        alert('Tabla no existe. Créala en pgAdmin con:\n\nCREATE TABLE datos_geotecnicos (\n  id SERIAL PRIMARY KEY,\n  nombre_tecnico VARCHAR(100) NOT NULL,\n  latitud DOUBLE PRECISION,\n  longitud DOUBLE PRECISION,\n  utm_x INTEGER,\n  utm_y INTEGER,\n  tipo_suelo_sucs VARCHAR(10),\n  profundidad_muestra DECIMAL(5,2),\n  radio_influencia INTEGER,\n  indice_plasticidad DECIMAL(5,2),\n  nivel_freatico DECIMAL(10,2),\n  provincia VARCHAR(50),\n  canton VARCHAR(50),\n  parroquia VARCHAR(100),\n  observaciones TEXT,\n  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);');
                         updateStatus('Tabla no existe', 'error');
                         return;
                     }
@@ -463,6 +581,13 @@
                 
                 updateStatus('Datos guardados', 'success');
                 alert('Datos guardados exitosamente');
+                
+                // Mantener el buffer en el mapa como referencia
+                if (currentBuffer) {
+                    bufferMarkers.push(currentBuffer);
+                    currentBuffer = null;
+                }
+                
                 closeModal();
                 
             } catch (error) {
@@ -494,25 +619,52 @@
                 
                 if (data && data.length > 0) {
                     data.forEach((punto, i) => {
+                        // Crear marcador principal
                         const marker = L.marker([punto.latitud, punto.longitud])
                             .bindPopup(`
-                                <div style="max-width: 250px;">
-                                    <h4>Punto ${i + 1}</h4>
-                                    <p><strong>Suelo:</strong> ${punto.tipo_suelo_sucs || 'N/A'}</p>
-                                    <p><strong>Plasticidad:</strong> ${punto.indice_plasticidad || 'N/A'}%</p>
-                                    <p><strong>Freático:</strong> ${punto.nivel_freatico || 'N/A'} m</p>
-                                    <p><strong>Ubicación:</strong> ${punto.canton}, ${punto.provincia}</p>
-                                    <p><strong>Fecha:</strong> ${new Date(punto.fecha_registro).toLocaleDateString()}</p>
-                                    ${punto.observaciones ? `<p><strong>Obs:</strong> ${punto.observaciones}</p>` : ''}
+                                <div style="max-width: 280px;">
+                                    <h4>📊 Punto ${i + 1}</h4>
+                                    <p><strong>👤 Técnico:</strong> ${punto.nombre_tecnico || 'N/A'}</p>
+                                    <p><strong>🏗️ Suelo:</strong> ${punto.tipo_suelo_sucs || 'N/A'}</p>
+                                    <p><strong>📏 Profundidad:</strong> ${punto.profundidad_muestra || 'N/A'} m</p>
+                                    <p><strong>🎯 Radio influencia:</strong> ${punto.radio_influencia || 'N/A'} m</p>
+                                    <p><strong>📈 Plasticidad:</strong> ${punto.indice_plasticidad || 'N/A'}%</p>
+                                    <p><strong>💧 Freático:</strong> ${punto.nivel_freatico || 'N/A'} m</p>
+                                    <p><strong>📍 Ubicación:</strong> ${punto.parroquia}, ${punto.canton}</p>
+                                    <p><strong>📅 Fecha:</strong> ${new Date(punto.fecha_registro).toLocaleDateString()}</p>
+                                    ${punto.observaciones ? `<p><strong>📝 Obs:</strong> ${punto.observaciones}</p>` : ''}
                                 </div>
                             `)
                             .addTo(map);
                         
                         dataMarkers.push(marker);
+                        
+                        // Crear buffer si tiene radio de influencia
+                        if (punto.radio_influencia) {
+                            const buffer = L.circle([punto.latitud, punto.longitud], {
+                                radius: punto.radio_influencia,
+                                color: '#27ae60',
+                                fillColor: '#27ae60',
+                                fillOpacity: 0.1,
+                                weight: 1,
+                                dashArray: '3, 3'
+                            }).addTo(map);
+                            
+                            buffer.bindPopup(`
+                                <div style="text-align: center;">
+                                    <h4>🎯 Área de Influencia</h4>
+                                    <p><strong>Suelo:</strong> ${punto.tipo_suelo_sucs}</p>
+                                    <p><strong>Radio:</strong> ${punto.radio_influencia} m</p>
+                                    <p><strong>Técnico:</strong> ${punto.nombre_tecnico}</p>
+                                </div>
+                            `);
+                            
+                            bufferMarkers.push(buffer);
+                        }
                     });
                     
                     updateStatus(`${data.length} puntos cargados`, 'success');
-                    alert(`Se cargaron ${data.length} puntos`);
+                    alert(`Se cargaron ${data.length} puntos con sus áreas de influencia`);
                 } else {
                     updateStatus('No hay datos', 'warning');
                     alert('No hay datos guardados');
