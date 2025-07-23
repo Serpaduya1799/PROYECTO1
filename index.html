@@ -497,16 +497,15 @@
                 map = L.map('map', {
                     center: [-2.9001, -79.0059],
                     zoom: 10,
-                    zoomControl: true
+                    zoomControl: true,
+                    preferCanvas: true
                 });
 
-                // Ocultar indicador de carga
-                document.getElementById('mapLoading').style.display = 'none';
-
-                // Capa base OpenStreetMap (más confiable que Mapbox)
+                // Capa base OpenStreetMap (más confiable)
                 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© OpenStreetMap contributors',
-                    maxZoom: 19
+                    maxZoom: 19,
+                    subdomains: ['a', 'b', 'c']
                 });
 
                 // Capa base Mapbox Satellite
@@ -517,15 +516,31 @@
                     maxZoom: 19
                 });
 
-                // Agregar capa base (empezar con OSM, más confiable)
+                // Capa OpenTopoMap como alternativa
+                const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenTopoMap contributors',
+                    maxZoom: 17
+                });
+
+                // Agregar capa base principal
                 osmLayer.addTo(map);
 
                 // Control de capas base
                 const baseLayers = {
-                    "OpenStreetMap": osmLayer,
-                    "Satellite": mapboxLayer
+                    "🗺️ Mapa Base": osmLayer,
+                    "🛰️ Satélite": mapboxLayer,
+                    "🏔️ Topográfico": topoLayer
                 };
                 L.control.layers(baseLayers).addTo(map);
+
+                // Evento cuando el mapa está listo
+                map.whenReady(function() {
+                    console.log('✅ Mapa listo');
+                    document.getElementById('mapLoading').style.display = 'none';
+                    
+                    // Cargar capas inmediatamente después de que el mapa esté listo
+                    loadLayers();
+                });
 
                 // Evento de clic para agregar datos
                 map.on('click', function(e) {
@@ -534,16 +549,20 @@
                     }
                 });
 
+                // Manejar errores de tiles
+                osmLayer.on('tileerror', function(error) {
+                    console.warn('⚠️ Error cargando tile OSM:', error);
+                });
+
+                mapboxLayer.on('tileerror', function(error) {
+                    console.warn('⚠️ Error cargando tile Mapbox:', error);
+                });
+
                 console.log('✅ Mapa inicializado correctamente');
-                
-                // Cargar capas después de que el mapa esté listo
-                setTimeout(() => {
-                    loadLayers();
-                }, 1000);
 
             } catch (error) {
                 console.error('❌ Error inicializando mapa:', error);
-                document.getElementById('mapLoading').innerHTML = '<div style="color: #e74c3c;">❌ Error cargando mapa</div>';
+                document.getElementById('mapLoading').innerHTML = '<div style="color: #e74c3c;">❌ Error cargando mapa. <button onclick="location.reload()" style="margin-left: 10px; padding: 5px 10px; background: #3498db; color: white; border: none; border-radius: 3px; cursor: pointer;">Reintentar</button></div>';
             }
         }
 
@@ -579,6 +598,7 @@
             
             try {
                 console.log('🔌 Probando conexión a Supabase...');
+                statusText.textContent = 'Probando conexión...';
                 
                 const { data, error } = await supabase
                     .from('spatial_ref_sys')
@@ -590,31 +610,72 @@
                 }
                 
                 statusIndicator.className = 'status-indicator status-connected';
-                statusText.textContent = 'Conectado a Supabase';
+                statusText.textContent = 'Conectado a Supabase ✓';
                 console.log('✅ Conexión exitosa a Supabase');
+                
+                // Test adicional: verificar si las tablas principales existen
+                await testMainTables();
                 
             } catch (error) {
                 statusIndicator.className = 'status-indicator status-disconnected';
-                statusText.textContent = 'Error de conexión';
+                statusText.textContent = 'Error de conexión ✗';
                 console.error('❌ Error de conexión:', error);
+                
+                // Mostrar información adicional para debugging
+                if (error.message.includes('JWT')) {
+                    statusText.textContent = 'Error: Token inválido ✗';
+                } else if (error.message.includes('network')) {
+                    statusText.textContent = 'Error: Sin conexión a internet ✗';
+                }
             }
+        }
+
+        async function testMainTables() {
+            const tables = ['CANTONESDELAZUAY', 'parroquiasazuay'];
+            let availableTables = 0;
+            
+            for (const tableName of tables) {
+                try {
+                    const { data, error } = await supabase
+                        .from(tableName)
+                        .select('*')
+                        .limit(1);
+                    
+                    if (!error) {
+                        availableTables++;
+                        console.log(`✅ Tabla ${tableName} disponible`);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ Tabla ${tableName} no disponible:`, error.message);
+                }
+            }
+            
+            const statusText = document.getElementById('connectionText');
+            statusText.textContent = `Conectado ✓ (${availableTables}/${tables.length} capas)`;
         }
 
         async function loadLayers() {
             console.log('📊 Cargando capas desde Supabase...');
             
-            try {
-                // Intentar cargar cantones
-                await loadLayerFromSupabase('CANTONESDELAZUAY', 'cantones', '#e74c3c', 2);
-                
-                // Intentar cargar parroquias  
-                await loadLayerFromSupabase('parroquiasazuay', 'parroquias', '#3498db', 1);
-                
-                console.log('✅ Capas cargadas correctamente');
-                
-            } catch (error) {
-                console.error('❌ Error cargando capas:', error);
+            const layersToLoad = [
+                { table: 'CANTONESDELAZUAY', key: 'cantones', color: '#e74c3c', weight: 2, priority: true },
+                { table: 'parroquiasazuay', key: 'parroquias', color: '#3498db', weight: 1, priority: true }
+            ];
+            
+            // Cargar capas prioritarias primero
+            for (const layer of layersToLoad) {
+                if (layer.priority) {
+                    try {
+                        await loadLayerFromSupabase(layer.table, layer.key, layer.color, layer.weight);
+                        // Pequeña pausa para no sobrecargar la conexión
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    } catch (error) {
+                        console.error(`❌ Error cargando ${layer.table}:`, error);
+                    }
+                }
             }
+            
+            console.log('✅ Capas principales cargadas');
         }
 
         async function loadLayerFromSupabase(tableName, layerKey, color, weight) {
