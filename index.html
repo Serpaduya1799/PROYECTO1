@@ -231,6 +231,29 @@
                     <select id="provincia" required>
                         <option value="">Seleccione...</option>
                         <option value="Azuay">Azuay</option>
+                        <option value="Bolívar">Bolívar</option>
+                        <option value="Cañar">Cañar</option>
+                        <option value="Carchi">Carchi</option>
+                        <option value="Chimborazo">Chimborazo</option>
+                        <option value="Cotopaxi">Cotopaxi</option>
+                        <option value="El Oro">El Oro</option>
+                        <option value="Esmeraldas">Esmeraldas</option>
+                        <option value="Galápagos">Galápagos</option>
+                        <option value="Guayas">Guayas</option>
+                        <option value="Imbabura">Imbabura</option>
+                        <option value="Loja">Loja</option>
+                        <option value="Los Ríos">Los Ríos</option>
+                        <option value="Manabí">Manabí</option>
+                        <option value="Morona Santiago">Morona Santiago</option>
+                        <option value="Napo">Napo</option>
+                        <option value="Orellana">Orellana</option>
+                        <option value="Pastaza">Pastaza</option>
+                        <option value="Pichincha">Pichincha</option>
+                        <option value="Santa Elena">Santa Elena</option>
+                        <option value="Santo Domingo">Santo Domingo</option>
+                        <option value="Sucumbíos">Sucumbíos</option>
+                        <option value="Tungurahua">Tungurahua</option>
+                        <option value="Zamora Chinchipe">Zamora Chinchipe</option>
                     </select>
                 </div>
 
@@ -277,28 +300,31 @@
         let layers = {};
 
         // Datos para selectores
-        const cantones = [
-            'Cuenca', 'Girón', 'Gualaceo', 'Nabón', 'Paute', 'Pucará', 'San Fernando',
-            'Santa Isabel', 'Sigsig', 'Oña', 'Chordeleg', 'El Pan', 'Sevilla de Oro', 
-            'Guachapala', 'Camilo Ponce Enríquez'
-        ];
-
-        const parroquias = {
-            'Cuenca': ['Cuenca', 'Baños', 'Cumbe', 'Chaucha', 'Molleturo', 'Nulti', 'Octavio Cordero Palacios', 'Paccha', 'Quingeo', 'Ricaurte', 'San Joaquín', 'Santa Ana', 'Sayausí', 'Sidcay', 'Sinincay', 'Tarqui', 'Turi', 'Valle', 'Victoria del Portete'],
-            'Girón': ['Girón', 'Asunción', 'San Gerardo'],
-            'Gualaceo': ['Gualaceo', 'Chordeleg', 'Jadán', 'Remigio Crespo Toral', 'San Juan', 'Zhidmad'],
-            'Nabón': ['Nabón', 'Cochapata', 'La Paz', 'Las Nieves'],
-            'Paute': ['Paute', 'Bulán', 'Chicán', 'El Cabo', 'Tomebamba'],
-            'Pucará': ['Pucará', 'Camilo Ponce Enríquez'],
-            'San Fernando': ['San Fernando'],
-            'Santa Isabel': ['Santa Isabel', 'Abdón Calderón', 'El Carmen de Pijilí', 'Shaglli'],
-            'Sigsig': ['Sigsig', 'Cuchil', 'Gima', 'Guel', 'Ludo', 'San Bartolomé'],
-            'Oña': ['Oña', 'Susudel'],
-            'Chordeleg': ['Chordeleg', 'Delegate', 'La Unión', 'Luis Galarza Orellana', 'San Martín de Puzhio'],
-            'El Pan': ['El Pan'],
-            'Sevilla de Oro': ['Sevilla de Oro', 'Amaluza', 'Palmas'],
-            'Guachapala': ['Guachapala'],
-            'Camilo Ponce Enríquez': ['Camilo Ponce Enríquez']
+        const cantonesPorProvincia = {
+            'Azuay': ['Cuenca', 'Girón', 'Gualaceo', 'Nabón', 'Paute', 'Pucará', 'San Fernando', 'Santa Isabel', 'Sigsig', 'Oña', 'Chordeleg', 'El Pan', 'Sevilla de Oro', 'Guachapala', 'Camilo Ponce Enríquez'],
+            'Bolívar': ['Guaranda', 'Chillanes', 'Chimbo', 'Echeandía', 'Las Naves', 'Caluma', 'San Miguel'],
+            'Cañar': ['Azogues', 'Biblián', 'Cañar', 'La Troncal', 'El Tambo', 'Déleg', 'Suscal'],
+            'Carchi': ['Tulcán', 'Bolívar', 'Espejo', 'Mira', 'Montúfar', 'San Pedro de Huaca'],
+            'Chimborazo': ['Riobamba', 'Alausí', 'Colta', 'Chambo', 'Chunchi', 'Guamote', 'Guano', 'Pallatanga', 'Penipe', 'Cumandá'],
+            'Cotopaxi': ['Latacunga', 'La Maná', 'Pangua', 'Pujilí', 'Salcedo', 'Saquisilí', 'Sigchos'],
+            'El Oro': ['Machala', 'Arenillas', 'Atahualpa', 'Balsas', 'Chilla', 'El Guabo', 'Huaquillas', 'Las Lajas', 'Marcabelí', 'Pasaje', 'Piñas', 'Portovelo', 'Santa Rosa', 'Zaruma'],
+            'Esmeraldas': ['Esmeraldas', 'Eloy Alfaro', 'Muisne', 'Quinindé', 'San Lorenzo', 'Atacames', 'Rioverde', 'La Concordia'],
+            'Galápagos': ['San Cristóbal', 'Isabela', 'Santa Cruz'],
+            'Guayas': ['Guayaquil', 'Alfredo Baquerizo Moreno', 'Balao', 'Balzar', 'Colimes', 'Daule', 'Durán', 'El Empalme', 'El Triunfo', 'Milagro', 'Naranjal', 'Naranjito', 'Palestina', 'Pedro Carbo', 'Samborondón', 'Santa Lucía', 'Salitre', 'San Jacinto de Yaguachi', 'Playas', 'Simón Bolívar', 'Coronel Marcelino Maridueña', 'Lomas de Sargentillo', 'Nobol', 'General Antonio Elizalde', 'Isidro Ayora'],
+            'Imbabura': ['Ibarra', 'Antonio Ante', 'Cotacachi', 'Otavalo', 'Pimampiro', 'San Miguel de Urcuquí'],
+            'Loja': ['Loja', 'Calvas', 'Catamayo', 'Celica', 'Chaguarpamba', 'Espíndola', 'Gonzanamá', 'Macará', 'Paltas', 'Pindal', 'Puyango', 'Saraguro', 'Sozoranga', 'Zapotillo', 'Paquisha', 'Olmedo'],
+            'Los Ríos': ['Babahoyo', 'Baba', 'Montalvo', 'Puebloviejo', 'Quevedo', 'Urdaneta', 'Ventanas', 'Vínces', 'Palenque', 'Buena Fé', 'Valencia', 'Mocache', 'Quinsaloma'],
+            'Manabí': ['Portoviejo', 'Bolívar', 'Chone', 'El Carmen', 'Flavio Alfaro', 'Jipijapa', 'Junín', 'Manta', 'Montecristi', 'Paján', 'Pichincha', 'Rocafuerte', 'Santa Ana', 'Sucre', 'Tosagua', 'Veinticuatro de Mayo', 'Pedernales', 'Olmedo', 'Puerto López', 'Jama', 'Jaramijó', 'San Vicente'],
+            'Morona Santiago': ['Morona', 'Gualaquiza', 'Limón Indanza', 'Palora', 'Santiago', 'Sucúa', 'Huamboya', 'San Juan Bosco', 'Taisha', 'Logroño', 'Pablo Sexto', 'Tiwintza'],
+            'Napo': ['Tena', 'Archidona', 'El Chaco', 'Quijos', 'Carlos Julio Arosemena Tola'],
+            'Orellana': ['Francisco de Orellana', 'Aguarico', 'La Joya de los Sachas', 'Loreto'],
+            'Pastaza': ['Puyo', 'Arajuno', 'Mera', 'Santa Clara'],
+            'Pichincha': ['Quito', 'Cayambe', 'Mejía', 'Pedro Moncayo', 'Rumiñahui', 'San Miguel de los Bancos', 'Pedro Vicente Maldonado', 'Puerto Quito'],
+            'Santa Elena': ['Santa Elena', 'La Libertad', 'Salinas'],
+            'Santo Domingo': ['Santo Domingo'],
+            'Sucumbíos': ['Lago Agrio', 'Gonzalo Pizarro', 'Putumayo', 'Shushufindi', 'Sucumbíos', 'Cascales', 'Cuyabeno'],
+            'Tungurahua': ['Ambato', 'Baños de Agua Santa', 'Cevallos', 'Mocha', 'Patate', 'Pelileo', 'Píllaro', 'Quero', 'Tisaleo'],
+            'Zamora Chinchipe': ['Zamora', 'Chinchipe', 'Nangaritza', 'Yacuambi', 'Yantzaza', 'El Pangui', 'Centinela del Cóndor', 'Palanda', 'Paquisha']
         };
 
         // Función UTM
@@ -363,13 +389,11 @@
             // Selectores de ubicación
             document.getElementById('provincia').onchange = function() {
                 const canton = document.getElementById('canton');
-                const parroquia = document.getElementById('parroquia');
                 
                 canton.innerHTML = '<option value="">Seleccione cantón...</option>';
-                parroquia.innerHTML = '<option value="">Seleccione parroquia...</option>';
                 
-                if (this.value === 'Azuay') {
-                    cantones.forEach(c => {
+                if (cantonesPorProvincia[this.value]) {
+                    cantonesPorProvincia[this.value].forEach(c => {
                         canton.innerHTML += `<option value="${c}">${c}</option>`;
                     });
                 }
