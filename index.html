@@ -497,19 +497,18 @@
         }
 
         function detectLocation(coords) {
-            let canton = 'Por detectar';
-            let parroquia = 'Por detectar';
+            let canton = 'Cuenca';
+            let parroquia = 'Cuenca';
             
             // Detectar cantón
             if (layers['cantones']) {
                 layers['cantones'].eachLayer(function(layer) {
                     try {
                         if (layer.getBounds && layer.getBounds().contains(coords)) {
-                            const popup = layer.getPopup();
-                            if (popup) {
-                                const content = popup.getContent();
-                                const match = content.match(/<strong>([^<]*can[^<]*|DPA_DESCAN[^<]*|CANTON[^<]*):<\/strong>\s*([^<]+)/i);
-                                if (match) canton = match[2].trim();
+                            // Buscar en las propiedades del feature
+                            if (layer.feature && layer.feature.properties) {
+                                const props = layer.feature.properties;
+                                canton = props.DPA_DESCAN || props.CANTON || props.NOMBRE || props.name || 'Cuenca';
                             }
                         }
                     } catch (e) {}
@@ -521,11 +520,10 @@
                 layers['parroquias'].eachLayer(function(layer) {
                     try {
                         if (layer.getBounds && layer.getBounds().contains(coords)) {
-                            const popup = layer.getPopup();
-                            if (popup) {
-                                const content = popup.getContent();
-                                const match = content.match(/<strong>([^<]*par[^<]*|DPA_DESPAR[^<]*|PARROQUIA[^<]*):<\/strong>\s*([^<]+)/i);
-                                if (match) parroquia = match[2].trim();
+                            // Buscar en las propiedades del feature
+                            if (layer.feature && layer.feature.properties) {
+                                const props = layer.feature.properties;
+                                parroquia = props.DPA_DESPAR || props.PARROQUIA || props.NOMBRE || props.name || 'Cuenca';
                             }
                         }
                     } catch (e) {}
