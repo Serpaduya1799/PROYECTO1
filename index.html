@@ -27,6 +27,32 @@
     <div class="sidebar">
         <h1>🗺️ Geoportal Azuay</h1>
         <div id="status" class="status warning">Iniciando...</div>
+        
+        <h3>🗂️ Capas</h3>
+        <div style="margin: 10px 0;">
+            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
+                <input type="checkbox" id="layer-cantones" checked style="margin-right: 8px;">
+                Cantones del Azuay
+            </label>
+            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
+                <input type="checkbox" id="layer-parroquias" checked style="margin-right: 8px;">
+                Parroquias Azuay
+            </label>
+            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
+                <input type="checkbox" id="layer-edificios" style="margin-right: 8px;">
+                Edificios
+            </label>
+            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
+                <input type="checkbox" id="layer-vias" style="margin-right: 8px;">
+                Vías Cuenca
+            </label>
+            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
+                <input type="checkbox" id="layer-usos" style="margin-right: 8px;">
+                Usos de Suelo
+            </label>
+        </div>
+        
+        <h3>📊 Herramientas</h3>
         <button class="btn" id="btnAddData">📍 Ingresar Datos</button>
         <button class="btn" id="btnShowData">📋 Ver Datos</button>
         <button class="btn" id="btnClear">🧹 Limpiar</button>
@@ -131,6 +157,7 @@
         let currentBuffer = null;
         let selectedCoords = null;
         let dataMarkers = [];
+        let layers = {};
 
         function toUTM(lat, lng) {
             const x = Math.round((lng + 81) * 111320 * Math.cos(lat * Math.PI / 180) + 500000);
@@ -158,6 +185,10 @@
             
             updateStatus('Sistema listo', 'success');
             
+            // Cargar capas automáticamente
+            loadLayer('cantones');
+            loadLayer('parroquias');
+            
             // Eventos
             document.getElementById('btnAddData').onclick = toggleAddData;
             document.getElementById('btnShowData').onclick = showData;
@@ -167,7 +198,177 @@
             document.getElementById('geoForm').onsubmit = saveData;
             document.getElementById('radioBuffer').onchange = createBuffer;
             
+            // Eventos de capas
+            document.querySelectorAll('input[id^="layer-"]').forEach(cb => {
+                cb.onchange = function() {
+                    const layerName = this.id.replace('layer-', '');
+                    if (this.checked) {
+                        loadLayer(layerName);
+                    } else {
+                        removeLayer(layerName);
+                    }
+                };
+            });
+            
             map.on('click', onMapClick);
+        });
+
+        async function loadLayer(layerName) {
+            if (layers[layerName]) return;
+            
+            const tableNames = {
+                'cantones': 'CANTONESDELAZUAY',
+                'parroquias': 'parroquiasazuay',
+                'edificios': 'edificios',
+                'vias': 'vias cuenca',
+                'usos': 'usos de suelo'
+            };
+            
+            const tableName = tableNames[layerName];
+            if (!tableName) return;
+            
+            try {
+                updateStatus(`Cargando ${layerName}...`, 'warning');
+                
+                const { data, error } = await supabase.from(tableName).select('*');
+                
+                if (error) {
+                    console.error(`Error cargando ${tableName}:`, error);
+                    updateStatus(`Error en ${layerName}`, 'error');
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    const layerGroup = L.layerGroup();
+                    let count = 0;
+                    
+                    data.forEach(item => {
+                        // Buscar campo de geometría
+                        let geomField = null;
+                        for (const key in item) {
+                            if (key.toLowerCase().includes('geom')) {
+                                geomField = key;
+                                break;
+                            }
+                        }
+                        
+                        if (geomField && item[geomField]) {
+                            try {
+                                const geom = typeof item[geomField] === 'string' 
+                                    ? JSON.parse(item[geomField]) 
+                                    : item[geomField];
+                                
+                                const layer = L.geoJSON(geom, {
+                                    style: getLayerStyle(layerName),
+                                    onEachFeature: function(feature, layer) {
+                                        // Popup con información
+                                        let popupContent = `<h4>${tableName}</h4>`;
+                                        Object.keys(item).forEach(key => {
+                                            if (!key.toLowerCase().includes('geom') && item[key]) {
+                                                popupContent += `<p><b>${key}:</b> ${item[key]}</p>`;
+                                            }
+                                        });
+                                        layer.bindPopup(popupContent);
+                                    }
+                                });
+                                
+                                layerGroup.addLayer(layer);
+                                count++;
+                            } catch (e) {
+                                console.warn('Error parseando geometría:', e);
+                            }
+                        }
+                    });
+                    
+                    if (count > 0) {
+                        layers[layerName] = layerGroup;
+                        layerGroup.addTo(map);
+                        updateStatus(`${layerName} cargado (${count} elementos)`, 'success');
+                    } else {
+                        updateStatus(`${layerName}: sin geometrías válidas`, 'warning');
+                    }
+                } else {
+                    updateStatus(`${layerName}: sin datos`, 'warning');
+                }
+                
+            } catch (error) {
+                console.error(`Error cargando ${layerName}:`, error);
+                updateStatus(`Error en ${layerName}: ${error.message}`, 'error');
+            }
+        }
+
+        function removeLayer(layerName) {
+            if (layers[layerName]) {
+                map.removeLayer(layers[layerName]);
+                delete layers[layerName];
+                updateStatus(`${layerName} ocultado`, 'success');
+            }
+        }
+
+        function getLayerStyle(layerName) {
+            const styles = {
+                'cantones': { color: '#e74c3c', weight: 2, fillOpacity: 0.1 },
+                'parroquias': { color: '#3498db', weight: 1, fillOpacity: 0.1 },
+                'edificios': { color: '#f39c12', weight: 1, fillOpacity: 0.3 },
+                'vias': { color: '#9b59b6', weight: 3, fillOpacity: 0 },
+                'usos': { color: '#1abc9c', weight: 1, fillOpacity: 0.2 }
+            };
+            return styles[layerName] || { color: '#34495e', weight: 1, fillOpacity: 0.1 };
+        }
+
+        async function detectLocation(coords) {
+            // Detectar cantón y parroquia basado en las capas cargadas
+            let canton = 'Cuenca';  // Default
+            let parroquia = 'Por detectar';
+            
+            // Buscar en qué polígono está el punto
+            if (layers['cantones']) {
+                layers['cantones'].eachLayer(function(layer) {
+                    try {
+                        if (layer.getBounds && layer.getBounds().contains(coords)) {
+                            // Extraer nombre del cantón del popup o propiedades
+                            const popupContent = layer.getPopup();
+                            if (popupContent) {
+                                const content = popupContent.getContent();
+                                // Buscar patrón de nombre
+                                const match = content.match(/<b>DPA_DESCAN:<\/b>\s*([^<]+)/i) ||
+                                            content.match(/<b>CANTON:<\/b>\s*([^<]+)/i) ||
+                                            content.match(/<b>NOMBRE:<\/b>\s*([^<]+)/i);
+                                if (match) {
+                                    canton = match[1].trim();
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Error detectando cantón:', e);
+                    }
+                });
+            }
+            
+            if (layers['parroquias']) {
+                layers['parroquias'].eachLayer(function(layer) {
+                    try {
+                        if (layer.getBounds && layer.getBounds().contains(coords)) {
+                            const popupContent = layer.getPopup();
+                            if (popupContent) {
+                                const content = popupContent.getContent();
+                                const match = content.match(/<b>DPA_DESPAR:<\/b>\s*([^<]+)/i) ||
+                                            content.match(/<b>PARROQUIA:<\/b>\s*([^<]+)/i) ||
+                                            content.match(/<b>NOMBRE:<\/b>\s*([^<]+)/i);
+                                if (match) {
+                                    parroquia = match[1].trim();
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Error detectando parroquia:', e);
+                    }
+                });
+            }
+            
+            document.getElementById('canton').value = canton;
+            document.getElementById('parroquia').value = parroquia;
+        }
         });
 
         function toggleAddData() {
@@ -206,9 +407,8 @@
             document.getElementById('coordUtmX').textContent = utm.x;
             document.getElementById('coordUtmY').textContent = utm.y;
             
-            // Auto-detectar ubicación básica
-            document.getElementById('canton').value = 'Cuenca'; // Default
-            document.getElementById('parroquia').value = 'Por detectar';
+            // Auto-detectar ubicación usando las capas cargadas
+            detectLocation(e.latlng);
             
             document.getElementById('dataModal').style.display = 'block';
         }
