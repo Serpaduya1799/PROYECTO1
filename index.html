@@ -3,78 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <title>Geoportal Azuay</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; }
-        .sidebar { width: 300px; background: #2c3e50; color: white; padding: 20px; overflow-y: auto; }
-        #map { flex: 1; height: 100vh; }
-        .btn { width: 100%; padding: 10px; margin: 5px 0; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; height: 100vh; display: flex; }
+        .sidebar { 
+            width: 320px; 
+            background: #2c3e50; 
+            color: white; 
+            padding: 20px; 
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar h1 { margin-bottom: 20px; font-size: 18px; text-align: center; }
+        .section { margin-bottom: 20px; }
+        .section h3 { color: #3498db; margin-bottom: 10px; font-size: 14px; }
+        #map { 
+            flex: 1; 
+            width: 100%;
+            height: 100vh;
+            background: #e8f4fd;
+        }
+        .btn { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 5px 0; 
+            background: #3498db; 
+            color: white; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 14px;
+        }
         .btn:hover { background: #2980b9; }
         .btn.active { background: #e74c3c; }
-        .status { padding: 8px; margin: 10px 0; border-radius: 4px; font-size: 12px; }
-        .status.success { background: #27ae60; }
-        .status.error { background: #e74c3c; }
-        .status.warning { background: #f39c12; }
-        .modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-        .modal-content { background: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
-        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            font-size: 12px; 
+            text-align: center;
+        }
+        .status.success { background: #27ae60; color: white; }
+        .status.error { background: #e74c3c; color: white; }
+        .status.warning { background: #f39c12; color: white; }
+        .layer-item { 
+            margin: 8px 0; 
+            display: flex; 
+            align-items: center;
+        }
+        .layer-item input { margin-right: 10px; }
+        .layer-item label { cursor: pointer; font-size: 13px; }
+        .modal { 
+            display: none; 
+            position: fixed; 
+            z-index: 10000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.5); 
+        }
+        .modal-content { 
+            background: white; 
+            margin: 3% auto; 
+            padding: 25px; 
+            border-radius: 10px; 
+            width: 85%; 
+            max-width: 550px; 
+            max-height: 85vh; 
+            overflow-y: auto; 
+        }
+        .close { 
+            color: #aaa; 
+            float: right; 
+            font-size: 28px; 
+            font-weight: bold; 
+            cursor: pointer; 
+        }
+        .close:hover { color: #000; }
         .form-group { margin: 15px 0; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: #2c3e50;
+        }
+        .form-group input, .form-group select, .form-group textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 2px solid #ddd; 
+            border-radius: 5px; 
+            font-size: 14px;
+            box-sizing: border-box; 
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .coord-info {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #3498db;
+        }
+        .coord-info h4 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <h1>🗺️ Geoportal Azuay</h1>
-        <div id="status" class="status warning">Iniciando...</div>
         
-        <h3>🗂️ Capas</h3>
-        <div style="margin: 10px 0;">
-            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
-                <input type="checkbox" id="layer-cantones" checked style="margin-right: 8px;">
-                Cantones del Azuay
-            </label>
-            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
-                <input type="checkbox" id="layer-parroquias" checked style="margin-right: 8px;">
-                Parroquias Azuay
-            </label>
-            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
-                <input type="checkbox" id="layer-edificios" style="margin-right: 8px;">
-                Edificios
-            </label>
-            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
-                <input type="checkbox" id="layer-vias" style="margin-right: 8px;">
-                Vías Cuenca
-            </label>
-            <label style="display: flex; align-items: center; margin: 5px 0; cursor: pointer;">
-                <input type="checkbox" id="layer-usos" style="margin-right: 8px;">
-                Usos de Suelo
-            </label>
+        <div id="status" class="status warning">Iniciando sistema...</div>
+        
+        <div class="section">
+            <h3>🗂️ Capas</h3>
+            <div class="layer-item">
+                <input type="checkbox" id="layer-cantones" checked>
+                <label for="layer-cantones">Cantones del Azuay</label>
+            </div>
+            <div class="layer-item">
+                <input type="checkbox" id="layer-parroquias" checked>
+                <label for="layer-parroquias">Parroquias Azuay</label>
+            </div>
+            <div class="layer-item">
+                <input type="checkbox" id="layer-edificios">
+                <label for="layer-edificios">Edificios</label>
+            </div>
+            <div class="layer-item">
+                <input type="checkbox" id="layer-vias">
+                <label for="layer-vias">Vías Cuenca</label>
+            </div>
+            <div class="layer-item">
+                <input type="checkbox" id="layer-usos">
+                <label for="layer-usos">Usos de Suelo</label>
+            </div>
         </div>
         
-        <h3>📊 Herramientas</h3>
-        <button class="btn" id="btnAddData">📍 Ingresar Datos</button>
-        <button class="btn" id="btnShowData">📋 Ver Datos</button>
-        <button class="btn" id="btnClear">🧹 Limpiar</button>
+        <div class="section">
+            <h3>📊 Herramientas</h3>
+            <button class="btn" id="btnAddData">📍 Ingresar Datos</button>
+            <button class="btn" id="btnShowData">📋 Ver Datos</button>
+            <button class="btn" id="btnClear">🧹 Limpiar Marcadores</button>
+        </div>
     </div>
     
     <div id="map"></div>
 
+    <!-- Modal para datos -->
     <div id="dataModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>📍 Datos Geotécnicos</h2>
+            <h2 style="color: #2c3e50; margin-bottom: 20px;">📍 Datos Geotécnicos</h2>
             
-            <div style="background: #f0f0f0; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                <strong>Coordenadas:</strong><br>
-                Lat: <span id="coordLat">-</span>, Lng: <span id="coordLng">-</span><br>
-                UTM X: <span id="coordUtmX">-</span>, UTM Y: <span id="coordUtmY">-</span>
+            <div class="coord-info">
+                <h4>Coordenadas del Punto</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-family: monospace;">
+                    <div><strong>Latitud:</strong> <span id="coordLat">-</span></div>
+                    <div><strong>Longitud:</strong> <span id="coordLng">-</span></div>
+                    <div><strong>UTM X:</strong> <span id="coordUtmX">-</span></div>
+                    <div><strong>UTM Y:</strong> <span id="coordUtmY">-</span></div>
+                </div>
             </div>
 
             <form id="geoForm">
                 <div class="form-group">
-                    <label>Nombre del Técnico:</label>
-                    <input type="text" id="nombreTecnico" required>
+                    <label>Nombre del Técnico/Investigador:</label>
+                    <input type="text" id="nombreTecnico" required placeholder="Ingrese su nombre completo">
                 </div>
                 
                 <div class="form-group">
@@ -83,39 +183,47 @@
                         <option value="">Seleccione...</option>
                         <option value="GW">GW - Grava bien graduada</option>
                         <option value="GP">GP - Grava mal graduada</option>
+                        <option value="GM">GM - Grava limosa</option>
+                        <option value="GC">GC - Grava arcillosa</option>
                         <option value="SW">SW - Arena bien graduada</option>
                         <option value="SP">SP - Arena mal graduada</option>
+                        <option value="SM">SM - Arena limosa</option>
+                        <option value="SC">SC - Arena arcillosa</option>
                         <option value="ML">ML - Limo baja plasticidad</option>
                         <option value="CL">CL - Arcilla baja plasticidad</option>
                         <option value="MH">MH - Limo alta plasticidad</option>
                         <option value="CH">CH - Arcilla alta plasticidad</option>
+                        <option value="OL">OL - Limo orgánico</option>
+                        <option value="OH">OH - Arcilla orgánica</option>
+                        <option value="PT">PT - Turba</option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>Profundidad de Muestra (m):</label>
-                    <input type="number" id="profundidad" step="0.1" min="0" required>
+                    <input type="number" id="profundidad" step="0.1" min="0" max="50" required placeholder="Ej: 1.5">
                 </div>
 
                 <div class="form-group">
-                    <label>Radio de Influencia (m):</label>
+                    <label>Radio de Influencia del Suelo (m):</label>
                     <select id="radioBuffer" required>
-                        <option value="">Seleccione...</option>
-                        <option value="50">50m</option>
-                        <option value="100">100m</option>
-                        <option value="200">200m</option>
-                        <option value="500">500m</option>
+                        <option value="">Seleccione radio...</option>
+                        <option value="50">50m - Zona muy localizada</option>
+                        <option value="100">100m - Zona pequeña</option>
+                        <option value="200">200m - Zona media</option>
+                        <option value="500">500m - Zona amplia</option>
+                        <option value="1000">1000m - Zona extensa</option>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>Índice de Plasticidad (%):</label>
-                    <input type="number" id="plasticidad" step="0.1" min="0" max="100">
+                    <input type="number" id="plasticidad" step="0.1" min="0" max="100" placeholder="Opcional">
                 </div>
 
                 <div class="form-group">
                     <label>Nivel Freático (m):</label>
-                    <input type="number" id="freatico" step="0.1" min="0">
+                    <input type="number" id="freatico" step="0.1" min="0" placeholder="Opcional">
                 </div>
 
                 <div class="form-group">
@@ -125,32 +233,36 @@
 
                 <div class="form-group">
                     <label>Cantón:</label>
-                    <input type="text" id="canton" readonly style="background: #f0f0f0;">
+                    <input type="text" id="canton" readonly style="background: #f0f0f0;" placeholder="Se detectará automáticamente">
                 </div>
 
                 <div class="form-group">
                     <label>Parroquia:</label>
-                    <input type="text" id="parroquia" readonly style="background: #f0f0f0;">
+                    <input type="text" id="parroquia" readonly style="background: #f0f0f0;" placeholder="Se detectará automáticamente">
                 </div>
 
                 <div class="form-group">
                     <label>Observaciones:</label>
-                    <textarea id="observaciones" rows="3"></textarea>
+                    <textarea id="observaciones" rows="3" placeholder="Información adicional (opcional)"></textarea>
                 </div>
 
-                <button type="submit" class="btn">💾 Guardar</button>
-                <button type="button" class="btn" id="cancelBtn" style="background: #95a5a6;">❌ Cancelar</button>
+                <div style="display: flex; gap: 10px; margin-top: 25px;">
+                    <button type="submit" class="btn" style="flex: 1;">💾 Guardar Datos</button>
+                    <button type="button" class="btn" id="cancelBtn" style="flex: 1; background: #95a5a6;">❌ Cancelar</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
     <script>
+        // Configuración
         const SUPABASE_URL = 'https://xgywnwvvrtfoltkcxfgc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhneXdud3Z2cnRmb2x0a2N4ZmdjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTUzMTIsImV4cCI6MjA2ODI3MTMxMn0.RNrfIZsgGwZJ8cnKmF26u0kKtoA7n3HAMjda1Wd-EmY';
 
+        // Variables globales
         let map, supabase;
         let isAddingData = false;
         let currentMarker = null;
@@ -159,6 +271,7 @@
         let dataMarkers = [];
         let layers = {};
 
+        // Función UTM
         function toUTM(lat, lng) {
             const x = Math.round((lng + 81) * 111320 * Math.cos(lat * Math.PI / 180) + 500000);
             const y = Math.round(Math.abs(lat * 110540) + 10000000);
@@ -166,39 +279,58 @@
         }
 
         function updateStatus(message, type) {
-            document.getElementById('status').textContent = message;
-            document.getElementById('status').className = `status ${type}`;
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
         }
 
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', function() {
-            updateStatus('Iniciando...', 'warning');
+        // Inicialización
+        window.onload = function() {
+            updateStatus('Iniciando mapa...', 'warning');
             
-            // Supabase
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            // Mapa
-            map = L.map('map').setView([-2.9001, -79.0059], 10);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(map);
-            
-            updateStatus('Sistema listo', 'success');
-            
-            // Cargar capas automáticamente
-            loadLayer('cantones');
-            loadLayer('parroquias');
-            
-            // Eventos
+            try {
+                // Inicializar Supabase
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                
+                // Crear mapa
+                map = L.map('map').setView([-2.9001, -79.0059], 10);
+                
+                // Agregar capa base
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(map);
+                
+                updateStatus('Mapa cargado correctamente', 'success');
+                
+                // Cargar capas automáticamente
+                setTimeout(() => {
+                    loadLayer('cantones');
+                    loadLayer('parroquias');
+                }, 1000);
+                
+                // Eventos
+                setupEvents();
+                
+            } catch (error) {
+                console.error('Error inicializando:', error);
+                updateStatus('Error: ' + error.message, 'error');
+            }
+        };
+
+        function setupEvents() {
+            // Botones principales
             document.getElementById('btnAddData').onclick = toggleAddData;
             document.getElementById('btnShowData').onclick = showData;
             document.getElementById('btnClear').onclick = clearMarkers;
+            
+            // Modal
             document.querySelector('.close').onclick = closeModal;
             document.getElementById('cancelBtn').onclick = closeModal;
             document.getElementById('geoForm').onsubmit = saveData;
             document.getElementById('radioBuffer').onchange = createBuffer;
             
-            // Eventos de capas
+            // Capas
             document.querySelectorAll('input[id^="layer-"]').forEach(cb => {
                 cb.onchange = function() {
                     const layerName = this.id.replace('layer-', '');
@@ -210,8 +342,16 @@
                 };
             });
             
+            // Clic en mapa
             map.on('click', onMapClick);
-        });
+            
+            // Cerrar modal con clic fuera
+            window.onclick = function(event) {
+                if (event.target === document.getElementById('dataModal')) {
+                    closeModal();
+                }
+            };
+        }
 
         async function loadLayer(layerName) {
             if (layers[layerName]) return;
@@ -261,11 +401,10 @@
                                 const layer = L.geoJSON(geom, {
                                     style: getLayerStyle(layerName),
                                     onEachFeature: function(feature, layer) {
-                                        // Popup con información
-                                        let popupContent = `<h4>${tableName}</h4>`;
+                                        let popupContent = `<h4 style="margin: 0 0 10px 0; color: #2c3e50;">${tableName}</h4>`;
                                         Object.keys(item).forEach(key => {
                                             if (!key.toLowerCase().includes('geom') && item[key]) {
-                                                popupContent += `<p><b>${key}:</b> ${item[key]}</p>`;
+                                                popupContent += `<p style="margin: 3px 0;"><strong>${key}:</strong> ${item[key]}</p>`;
                                             }
                                         });
                                         layer.bindPopup(popupContent);
@@ -288,12 +427,12 @@
                         updateStatus(`${layerName}: sin geometrías válidas`, 'warning');
                     }
                 } else {
-                    updateStatus(`${layerName}: sin datos`, 'warning');
+                    updateStatus(`${layerName}: tabla vacía`, 'warning');
                 }
                 
             } catch (error) {
                 console.error(`Error cargando ${layerName}:`, error);
-                updateStatus(`Error en ${layerName}: ${error.message}`, 'error');
+                updateStatus(`Error en ${layerName}`, 'error');
             }
         }
 
@@ -301,7 +440,6 @@
             if (layers[layerName]) {
                 map.removeLayer(layers[layerName]);
                 delete layers[layerName];
-                updateStatus(`${layerName} ocultado`, 'success');
             }
         }
 
@@ -316,75 +454,20 @@
             return styles[layerName] || { color: '#34495e', weight: 1, fillOpacity: 0.1 };
         }
 
-        async function detectLocation(coords) {
-            // Detectar cantón y parroquia basado en las capas cargadas
-            let canton = 'Cuenca';  // Default
-            let parroquia = 'Por detectar';
-            
-            // Buscar en qué polígono está el punto
-            if (layers['cantones']) {
-                layers['cantones'].eachLayer(function(layer) {
-                    try {
-                        if (layer.getBounds && layer.getBounds().contains(coords)) {
-                            // Extraer nombre del cantón del popup o propiedades
-                            const popupContent = layer.getPopup();
-                            if (popupContent) {
-                                const content = popupContent.getContent();
-                                // Buscar patrón de nombre
-                                const match = content.match(/<b>DPA_DESCAN:<\/b>\s*([^<]+)/i) ||
-                                            content.match(/<b>CANTON:<\/b>\s*([^<]+)/i) ||
-                                            content.match(/<b>NOMBRE:<\/b>\s*([^<]+)/i);
-                                if (match) {
-                                    canton = match[1].trim();
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('Error detectando cantón:', e);
-                    }
-                });
-            }
-            
-            if (layers['parroquias']) {
-                layers['parroquias'].eachLayer(function(layer) {
-                    try {
-                        if (layer.getBounds && layer.getBounds().contains(coords)) {
-                            const popupContent = layer.getPopup();
-                            if (popupContent) {
-                                const content = popupContent.getContent();
-                                const match = content.match(/<b>DPA_DESPAR:<\/b>\s*([^<]+)/i) ||
-                                            content.match(/<b>PARROQUIA:<\/b>\s*([^<]+)/i) ||
-                                            content.match(/<b>NOMBRE:<\/b>\s*([^<]+)/i);
-                                if (match) {
-                                    parroquia = match[1].trim();
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.warn('Error detectando parroquia:', e);
-                    }
-                });
-            }
-            
-            document.getElementById('canton').value = canton;
-            document.getElementById('parroquia').value = parroquia;
-        }
-        });
-
         function toggleAddData() {
             isAddingData = !isAddingData;
             const btn = document.getElementById('btnAddData');
             
             if (isAddingData) {
-                btn.textContent = '❌ Cancelar';
+                btn.textContent = '❌ Cancelar Ingreso';
                 btn.classList.add('active');
                 map.getContainer().style.cursor = 'crosshair';
-                updateStatus('Haz clic en el mapa', 'warning');
+                updateStatus('Haz clic en el mapa para agregar punto', 'warning');
             } else {
                 btn.textContent = '📍 Ingresar Datos';
                 btn.classList.remove('active');
                 map.getContainer().style.cursor = '';
-                updateStatus('Sistema listo', 'success');
+                updateStatus('Modo ingreso desactivado', 'success');
                 if (currentMarker) map.removeLayer(currentMarker);
                 if (currentBuffer) map.removeLayer(currentBuffer);
             }
@@ -407,10 +490,50 @@
             document.getElementById('coordUtmX').textContent = utm.x;
             document.getElementById('coordUtmY').textContent = utm.y;
             
-            // Auto-detectar ubicación usando las capas cargadas
+            // Detectar ubicación
             detectLocation(e.latlng);
             
             document.getElementById('dataModal').style.display = 'block';
+        }
+
+        function detectLocation(coords) {
+            let canton = 'Por detectar';
+            let parroquia = 'Por detectar';
+            
+            // Detectar cantón
+            if (layers['cantones']) {
+                layers['cantones'].eachLayer(function(layer) {
+                    try {
+                        if (layer.getBounds && layer.getBounds().contains(coords)) {
+                            const popup = layer.getPopup();
+                            if (popup) {
+                                const content = popup.getContent();
+                                const match = content.match(/<strong>([^<]*can[^<]*|DPA_DESCAN[^<]*|CANTON[^<]*):<\/strong>\s*([^<]+)/i);
+                                if (match) canton = match[2].trim();
+                            }
+                        }
+                    } catch (e) {}
+                });
+            }
+            
+            // Detectar parroquia
+            if (layers['parroquias']) {
+                layers['parroquias'].eachLayer(function(layer) {
+                    try {
+                        if (layer.getBounds && layer.getBounds().contains(coords)) {
+                            const popup = layer.getPopup();
+                            if (popup) {
+                                const content = popup.getContent();
+                                const match = content.match(/<strong>([^<]*par[^<]*|DPA_DESPAR[^<]*|PARROQUIA[^<]*):<\/strong>\s*([^<]+)/i);
+                                if (match) parroquia = match[2].trim();
+                            }
+                        }
+                    } catch (e) {}
+                });
+            }
+            
+            document.getElementById('canton').value = canton;
+            document.getElementById('parroquia').value = parroquia;
         }
 
         function createBuffer() {
@@ -424,20 +547,29 @@
                 color: '#3498db',
                 fillColor: '#3498db',
                 fillOpacity: 0.2,
-                weight: 2
+                weight: 2,
+                dashArray: '5, 5'
             }).addTo(map);
+            
+            currentBuffer.bindPopup(`
+                <div style="text-align: center;">
+                    <h4>🎯 Área de Influencia</h4>
+                    <p><strong>Radio:</strong> ${radius} metros</p>
+                    <p><strong>Área:</strong> ${(Math.PI * Math.pow(radius, 2) / 10000).toFixed(2)} hectáreas</p>
+                </div>
+            `);
         }
 
         async function saveData(e) {
             e.preventDefault();
             
             if (!selectedCoords) {
-                alert('No hay coordenadas');
+                alert('No hay coordenadas seleccionadas');
                 return;
             }
             
             try {
-                updateStatus('Guardando...', 'warning');
+                updateStatus('Guardando datos...', 'warning');
                 
                 const utm = toUTM(selectedCoords.lat, selectedCoords.lng);
                 
@@ -463,25 +595,27 @@
                 
                 if (error) {
                     if (error.code === '42P01') {
-                        alert('CREAR TABLA:\n\nCREATE TABLE datos_geotecnicos (\n  id SERIAL PRIMARY KEY,\n  nombre_tecnico VARCHAR(100),\n  latitud DOUBLE PRECISION,\n  longitud DOUBLE PRECISION,\n  utm_x INTEGER,\n  utm_y INTEGER,\n  tipo_suelo_sucs VARCHAR(10),\n  profundidad_muestra DECIMAL(5,2),\n  radio_influencia INTEGER,\n  indice_plasticidad DECIMAL(5,2),\n  nivel_freatico DECIMAL(10,2),\n  provincia VARCHAR(50),\n  canton VARCHAR(50),\n  parroquia VARCHAR(100),\n  observaciones TEXT,\n  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);');
+                        alert('CREAR TABLA EN PGADMIN:\n\nCREATE TABLE datos_geotecnicos (\n  id SERIAL PRIMARY KEY,\n  nombre_tecnico VARCHAR(100),\n  latitud DOUBLE PRECISION,\n  longitud DOUBLE PRECISION,\n  utm_x INTEGER,\n  utm_y INTEGER,\n  tipo_suelo_sucs VARCHAR(10),\n  profundidad_muestra DECIMAL(5,2),\n  radio_influencia INTEGER,\n  indice_plasticidad DECIMAL(5,2),\n  nivel_freatico DECIMAL(10,2),\n  provincia VARCHAR(50),\n  canton VARCHAR(50),\n  parroquia VARCHAR(100),\n  observaciones TEXT,\n  fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n);');
+                        updateStatus('Tabla no existe - Ver instrucciones', 'error');
                         return;
                     }
                     throw error;
                 }
                 
-                updateStatus('Guardado exitoso', 'success');
-                alert('✅ Datos guardados');
+                updateStatus('Datos guardados exitosamente', 'success');
+                alert('✅ Datos guardados correctamente');
                 closeModal();
                 
             } catch (error) {
+                console.error('Error guardando:', error);
                 updateStatus('Error: ' + error.message, 'error');
-                alert('Error: ' + error.message);
+                alert('❌ Error: ' + error.message);
             }
         }
 
         async function showData() {
             try {
-                updateStatus('Cargando datos...', 'warning');
+                updateStatus('Cargando datos existentes...', 'warning');
                 
                 const { data, error } = await supabase
                     .from('datos_geotecnicos')
@@ -490,7 +624,8 @@
                 
                 if (error) {
                     if (error.code === '42P01') {
-                        alert('No hay tabla de datos');
+                        alert('No hay tabla de datos aún. Crea la tabla primero.');
+                        updateStatus('Tabla no existe', 'warning');
                         return;
                     }
                     throw error;
@@ -500,60 +635,96 @@
                 
                 if (data && data.length > 0) {
                     data.forEach((punto, i) => {
+                        // Marcador principal
                         const marker = L.marker([punto.latitud, punto.longitud])
                             .bindPopup(`
-                                <h4>Punto ${i + 1}</h4>
-                                <p><b>Técnico:</b> ${punto.nombre_tecnico}</p>
-                                <p><b>Suelo:</b> ${punto.tipo_suelo_sucs}</p>
-                                <p><b>Profundidad:</b> ${punto.profundidad_muestra}m</p>
-                                <p><b>Radio:</b> ${punto.radio_influencia}m</p>
-                                <p><b>Ubicación:</b> ${punto.canton}</p>
-                                <p><b>Fecha:</b> ${new Date(punto.fecha_registro).toLocaleDateString()}</p>
+                                <div style="max-width: 300px;">
+                                    <h4 style="margin: 0 0 10px 0; color: #2c3e50;">📊 Punto Geotécnico ${i + 1}</h4>
+                                    <p><strong>👤 Técnico:</strong> ${punto.nombre_tecnico}</p>
+                                    <p><strong>🏗️ Suelo:</strong> ${punto.tipo_suelo_sucs}</p>
+                                    <p><strong>📏 Profundidad:</strong> ${punto.profundidad_muestra}m</p>
+                                    <p><strong>🎯 Radio:</strong> ${punto.radio_influencia}m</p>
+                                    <p><strong>📈 Plasticidad:</strong> ${punto.indice_plasticidad || 'N/A'}%</p>
+                                    <p><strong>💧 Freático:</strong> ${punto.nivel_freatico || 'N/A'}m</p>
+                                    <p><strong>📍 Ubicación:</strong> ${punto.parroquia}, ${punto.canton}</p>
+                                    <p><strong>📅 Fecha:</strong> ${new Date(punto.fecha_registro).toLocaleDateString()}</p>
+                                    ${punto.observaciones ? `<p><strong>📝 Obs:</strong> ${punto.observaciones}</p>` : ''}
+                                </div>
                             `)
                             .addTo(map);
                         
                         dataMarkers.push(marker);
                         
+                        // Buffer del área de influencia
                         if (punto.radio_influencia) {
                             const buffer = L.circle([punto.latitud, punto.longitud], {
                                 radius: punto.radio_influencia,
                                 color: '#27ae60',
                                 fillColor: '#27ae60',
-                                fillOpacity: 0.1,
-                                weight: 1
+                                fillOpacity: 0.15,
+                                weight: 2,
+                                dashArray: '3, 3'
                             }).addTo(map);
+                            
+                            buffer.bindPopup(`
+                                <div style="text-align: center;">
+                                    <h4>🎯 Área de Influencia</h4>
+                                    <p><strong>Suelo:</strong> ${punto.tipo_suelo_sucs}</p>
+                                    <p><strong>Radio:</strong> ${punto.radio_influencia}m</p>
+                                    <p><strong>Técnico:</strong> ${punto.nombre_tecnico}</p>
+                                </div>
+                            `);
                             
                             dataMarkers.push(buffer);
                         }
                     });
                     
-                    updateStatus(`${data.length} puntos cargados`, 'success');
-                    alert(`${data.length} puntos cargados`);
+                    updateStatus(`${data.length} puntos cargados con éxito`, 'success');
+                    alert(`✅ Se cargaron ${data.length} puntos geotécnicos en el mapa`);
+                    
+                    // Ajustar vista del mapa
+                    if (data.length > 0) {
+                        const group = new L.featureGroup(dataMarkers.filter(m => m instanceof L.Marker));
+                        map.fitBounds(group.getBounds().pad(0.1));
+                    }
+                    
                 } else {
-                    alert('No hay datos');
+                    updateStatus('No hay datos para mostrar', 'warning');
+                    alert('ℹ️ No hay datos geotécnicos guardados');
                 }
                 
             } catch (error) {
-                updateStatus('Error: ' + error.message, 'error');
-                alert('Error: ' + error.message);
+                console.error('Error cargando datos:', error);
+                updateStatus('Error cargando datos', 'error');
+                alert('❌ Error cargando datos: ' + error.message);
             }
         }
 
         function clearMarkers() {
             dataMarkers.forEach(marker => map.removeLayer(marker));
             dataMarkers = [];
+            updateStatus('Marcadores eliminados', 'success');
         }
 
         function closeModal() {
             document.getElementById('dataModal').style.display = 'none';
             document.getElementById('geoForm').reset();
             
-            if (currentMarker) map.removeLayer(currentMarker);
-            if (currentBuffer) map.removeLayer(currentBuffer);
-            if (isAddingData) toggleAddData();
+            if (currentMarker) {
+                map.removeLayer(currentMarker);
+                currentMarker = null;
+            }
             
+            if (currentBuffer) {
+                map.removeLayer(currentBuffer);
+                currentBuffer = null;
+            }
+            
+            if (isAddingData) toggleAddData();
             selectedCoords = null;
         }
+
+        console.log('🗺️ Geoportal Azuay cargado y listo para usar');
     </script>
 </body>
 </html>
